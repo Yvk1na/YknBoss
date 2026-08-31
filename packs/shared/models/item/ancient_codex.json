@@ -1,0 +1,87 @@
+{
+  "format_version": "1.21.10",
+  "credit": "Adapted from Flying Magic Book by Organization (CC BY-SA 4.0)",
+  "ambientocclusion": false,
+  "gui_light": "front",
+  "textures": {
+    "cover": "yknboss:item/ancient_codex_cover",
+    "left_page": "yknboss:item/ancient_codex_page_left",
+    "right_page": "yknboss:item/ancient_codex_page_right",
+    "particle": "yknboss:item/ancient_codex_page_left"
+  },
+  "elements": [
+    {
+      "from": [0.75, 7.0, 2.75],
+      "to": [8.0, 7.7, 13.25],
+      "rotation": {"angle": -22.5, "axis": "z", "origin": [8, 7.35, 8], "rescale": true},
+      "faces": {
+        "north": {"uv": [0, 0, 16, 2], "texture": "#cover"},
+        "east": {"uv": [0, 0, 2, 16], "texture": "#cover"},
+        "south": {"uv": [0, 0, 16, 2], "texture": "#cover"},
+        "west": {"uv": [0, 0, 2, 16], "texture": "#cover"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#cover"},
+        "down": {"uv": [0, 16, 16, 0], "texture": "#cover"}
+      }
+    },
+    {
+      "from": [8.0, 7.0, 2.75],
+      "to": [15.25, 7.7, 13.25],
+      "rotation": {"angle": 22.5, "axis": "z", "origin": [8, 7.35, 8], "rescale": true},
+      "faces": {
+        "north": {"uv": [0, 0, 16, 2], "texture": "#cover"},
+        "east": {"uv": [0, 0, 2, 16], "texture": "#cover"},
+        "south": {"uv": [0, 0, 16, 2], "texture": "#cover"},
+        "west": {"uv": [0, 0, 2, 16], "texture": "#cover"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#cover"},
+        "down": {"uv": [0, 16, 16, 0], "texture": "#cover"}
+      }
+    },
+    {
+      "from": [1.15, 7.62, 3.15],
+      "to": [8.0, 8.18, 12.85],
+      "rotation": {"angle": -22.5, "axis": "z", "origin": [8, 7.9, 8], "rescale": true},
+      "faces": {
+        "north": {"uv": [0, 0, 16, 1], "texture": "#left_page"},
+        "east": {"uv": [0, 0, 1, 16], "texture": "#left_page"},
+        "south": {"uv": [0, 0, 16, 1], "texture": "#left_page"},
+        "west": {"uv": [0, 0, 1, 16], "texture": "#left_page"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#left_page"},
+        "down": {"uv": [0, 16, 16, 0], "texture": "#left_page"}
+      }
+    },
+    {
+      "from": [8.0, 7.62, 3.15],
+      "to": [14.85, 8.18, 12.85],
+      "rotation": {"angle": 22.5, "axis": "z", "origin": [8, 7.9, 8], "rescale": true},
+      "faces": {
+        "north": {"uv": [0, 0, 16, 1], "texture": "#right_page"},
+        "east": {"uv": [0, 0, 1, 16], "texture": "#right_page"},
+        "south": {"uv": [0, 0, 16, 1], "texture": "#right_page"},
+        "west": {"uv": [0, 0, 1, 16], "texture": "#right_page"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#right_page"},
+        "down": {"uv": [0, 16, 16, 0], "texture": "#right_page"}
+      }
+    },
+    {
+      "from": [7.5, 6.75, 2.6],
+      "to": [8.5, 8.1, 13.4],
+      "faces": {
+        "north": {"uv": [0, 0, 2, 3], "texture": "#cover"},
+        "east": {"uv": [0, 0, 16, 3], "texture": "#cover"},
+        "south": {"uv": [0, 0, 2, 3], "texture": "#cover"},
+        "west": {"uv": [0, 0, 16, 3], "texture": "#cover"},
+        "up": {"uv": [0, 0, 2, 16], "texture": "#cover"},
+        "down": {"uv": [0, 16, 2, 0], "texture": "#cover"}
+      }
+    }
+  ],
+  "display": {
+    "thirdperson_righthand": {"rotation": [0, 90, -70], "translation": [0, 2.5, -1.5], "scale": [0.75, 0.75, 0.75]},
+    "thirdperson_lefthand": {"rotation": [0, -90, 70], "translation": [0, 2.5, -1.5], "scale": [0.75, 0.75, 0.75]},
+    "firstperson_righthand": {"rotation": [0, 90, -55], "translation": [1.25, 2.5, -1.5], "scale": [0.8, 0.8, 0.8]},
+    "firstperson_lefthand": {"rotation": [0, -90, 55], "translation": [-1.25, 2.5, -1.5], "scale": [0.8, 0.8, 0.8]},
+    "ground": {"translation": [0, 2, 0], "scale": [0.75, 0.75, 0.75]},
+    "gui": {"rotation": [65, 0, 20], "translation": [0, 0, 0], "scale": [0.92, 0.92, 0.92]},
+    "fixed": {"rotation": [0, 0, 0], "translation": [0, 0, 0], "scale": [0.9, 0.9, 0.9]}
+  }
+}

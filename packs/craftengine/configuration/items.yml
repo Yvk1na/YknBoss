@@ -1,0 +1,34 @@
+items:
+  yknboss:rainbow:
+    material: paper
+    item_model: yknboss:rainbow
+    model:
+      path: yknboss:item/rainbow
+    data:
+      item_name: "<!i><gradient:#ff3b3b:#ffed4a:#58f08b:#4fb9ff:#b96cff><bold>彩虹"
+      lore:
+        - "<!i><gray>动态纹理每 0.5 秒变换一次颜色"
+        - "<!i><gold>佩戴在头部时：最大生命值 +100"
+        - "<!i><dark_gray>固定物品与 NBT，仅改变显示颜色"
+  yknboss:infernal_grimoire:
+    material: paper
+    item_model: yknboss:infernal_grimoire
+    model:
+      path: yknboss:item/infernal_grimoire
+    data:
+      item_name: "<!i><dark_red><bold>炼狱魔导书"
+      lore:
+        - "<!i><gray>复现自 CraftClover 的立体魔导书外观"
+        - "<!i><gold>右键：<white>召唤或收回左侧悬浮魔导书"
+        - "<!i><dark_gray>物品离开背包后，悬浮形态会自动消失"
+  yknboss:ancient_codex:
+    material: paper
+    item_model: yknboss:ancient_codex
+    model:
+      path: yknboss:item/ancient_codex
+    data:
+      item_name: "<!i><aqua><bold>上古法典"
+      lore:
+        - "<!i><gray>一本在施法者身侧悬浮的古老法典"
+        - "<!i><aqua>右键：<white>召唤或收回左侧悬浮法典"
+        - "<!i><dark_gray>模型来源：Flying Magic Book（CC BY-SA 4.0）"

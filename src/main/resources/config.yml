@@ -1,0 +1,976 @@
+config-version: 46
+
+bone-dragon-arena:
+  enabled: true
+  world-name: "bone_dragon_arena"
+  instance-count: 10
+  radius: 100
+  floor-y: 80
+  seed: 761923846123
+  summon-duration-seconds: 3
+  # 单人基础限时；每多一名实际参战玩家会扣除下方配置的秒数。
+  challenge-duration-seconds: 900
+  challenge-duration-reduction-per-extra-player-seconds: 60
+  minimum-challenge-duration-seconds: 60
+  # 当前三阶段血量均视为单人血量；每多一名实际参战玩家增加此百分比。
+  boss-health-increase-per-extra-player-percent: 10.0
+  return-delay-seconds: 30
+  respawn-delay-seconds: 10
+  # true：服务器启动后创建全部实例；false：首次执行 /yknboss enter 时按需创建。
+  auto-create: false
+
+endsun-guard-arena:
+  enabled: true
+  world-name: "endsun_guard_arena"
+  instance-count: 10
+  radius: 100
+  floor-y: 80
+  seed: 908172635441
+  summon-duration-seconds: 4
+  # 单人基础限时；每多一名实际参战玩家会扣除下方配置的秒数。
+  challenge-duration-seconds: 900
+  challenge-duration-reduction-per-extra-player-seconds: 60
+  minimum-challenge-duration-seconds: 60
+  # 当前三阶段血量均视为单人血量；每多一名实际参战玩家增加此百分比。
+  boss-health-increase-per-extra-player-percent: 10.0
+  return-delay-seconds: 30
+  respawn-delay-seconds: 10
+  # true：服务器启动后创建全部实例；false：队长首次进入时按需创建并在开场前重置。
+  auto-create: false
+
+end-witch-arena:
+  enabled: true
+  world-name: "end_witch_arena"
+  instance-count: 10
+  radius: 100
+  floor-y: 80
+  seed: 170315912487
+  summon-duration-seconds: 4
+  # 单人基础限时；每多一名实际参战玩家会扣除下方配置的秒数。
+  challenge-duration-seconds: 900
+  challenge-duration-reduction-per-extra-player-seconds: 60
+  minimum-challenge-duration-seconds: 60
+  # 当前三阶段血量均视为单人血量；每多一名实际参战玩家增加此百分比。
+  boss-health-increase-per-extra-player-percent: 10.0
+  return-delay-seconds: 30
+  respawn-delay-seconds: 10
+  # true：服务器启动后创建全部实例；false：队长首次进入时按需创建并在开场前重置。
+  auto-create: false
+
+party:
+  # 单支队伍和单个副本允许的最大人数。
+  max-members: 10
+  invite-expire-seconds: 60
+
+slayer:
+  skill:
+    name: "讨伐"
+    description: "仅通过完成 YknBoss 正式副本获得经验，提升针对首领战的被动能力。"
+  abilities:
+    hunting-instinct:
+      name: "猎杀本能"
+      description: "在 YknBoss 正式副本中，对首领造成的伤害提高 {value}%。"
+      info: "+{value}% 首领伤害"
+    boss-resistance:
+      name: "首领抗性"
+      description: "在 YknBoss 正式副本中，受到首领攻击的伤害降低 {value}%。"
+      info: "-{value}% 首领伤害"
+    last-stand:
+      name: "绝境反击"
+      description: "生命值不高于 35% 时，对 YknBoss 首领造成的伤害额外提高 {value}%。"
+      info: "+{value}% 低血量伤害"
+    regroup:
+      name: "重整旗鼓"
+      description: "YknBoss 正式副本中的复活等待时间缩短 {value} 秒，最低仍为 6 秒。"
+      info: "-{value} 秒复活等待"
+    final-insight:
+      name: "终末洞察"
+      description: "最终阶段首领生命值不高于 20% 时，造成的伤害额外提高 {value}%。"
+      info: "+{value}% 斩杀阶段伤害"
+  rewards:
+    bone-dragon-xp: 1200
+    endsun-guard-xp: 1800
+    end-witch-xp: 2200
+    minimum-damage-share: 0.01
+
+endsun-guard:
+  display-name: "&6&l烬日冥卫·阿努赫"
+  attack-damage: 26.0
+  # 可配置范围 0-100000；需同时确保服务端允许对应的护甲属性上限。
+  armor: 22.0
+  movement-speed: 0.32
+  attack-speed-multiplier: 1.2
+  follow-range: 48.0
+  knockback-resistance: 0.9
+  bossbar-range: 64.0
+  experience: 0
+  combat-feedback:
+    # 仅在未释放技能的非霸体状态播放受击后仰；用于限制高攻速下的动画重播频率。
+    hurt-animation-cooldown-seconds: 0.2
+    hurt-knockback-horizontal: 0.16
+    hurt-knockback-vertical: 0.05
+  model:
+    id: "endsun_anuhe"
+    # 1.5 已烘焙进资源模型，插件会换算为运行时 1.0，避免各骨骼缩放不同步。
+    scale: 1.5
+  eclipse:
+    maximum: 100.0
+    # 玩家受到的每点火焰伤害增加的日蚀值。
+    fire-gain-per-damage: 2.5
+    # 正面攻击耀阳圣盾时每次增加的日蚀值。
+    shield-hit-gain: 12.0
+    # 成功破招、躲过审判或熄灭冠冕时降低的日蚀值。
+    counter-reduction: 18.0
+    passive-decay-per-second: 0.0
+    form-duration-seconds: 15.0
+    damage-multiplier: 1.35
+    speed-multiplier: 1.25
+  phases:
+    # 三个阶段使用独立血池；上一阶段清空后，新血条会重新补满。
+    # 三阶段默认总血量为 1024：40% / 30% / 30%。
+    p1-health: 409.6
+    p2-health: 307.2
+    p3-health: 307.2
+    transition-invulnerability-seconds: 1.0
+    # 阶段伤害加成同时影响普通攻击、技能和双生蚀影攻击。
+    phase-two-damage-bonus-percent: 15.0
+    phase-three-damage-bonus-percent: 30.0
+    phase-three-attack-speed-multiplier: 1.5
+    phase-three-movement-speed-multiplier: 1.2
+    phase-three-ultimate-delay-seconds: 15.0
+  abilities:
+    scythe-return:
+      cooldown-seconds: 6.5
+      range: 16.0
+      hit-radius: 1.8
+      outward-seconds: 0.9
+      return-delay-seconds: 0.6
+      return-seconds: 0.75
+      outward-damage: 18.0
+      return-damage: 36.0
+      knockback: 1.35
+      soul-fracture-seconds: 6.0
+    amethyst-judgement:
+      cooldown-seconds: 14.0
+      telegraph-seconds: 3.0
+      damage: 34.0
+      maximum-eclipse-bonus-percent: 100.0
+      shadow-radius: 3.0
+    soul-crown:
+      cooldown-seconds: 18.0
+      duration-seconds: 12.0
+      flame-count: 6
+      flame-speed: 0.14
+      flame-hit-radius: 1.4
+      flame-damage: 8.0
+      fire-ticks: 80
+      shield-heal-on-burning-hit: 20.0
+      totem-count: 3
+      totem-hits: 3
+    solar-shield:
+      cooldown-seconds: 12.0
+      duration-seconds: 6.0
+      maximum-energy: 200.0
+      minimum-cast-energy-percent: 35.0
+      front-dot-threshold: 0.15
+      rear-dot-threshold: -0.25
+      stagger-seconds: 4.0
+      vulnerable-damage-multiplier: 1.5
+    heart-furnace:
+      reflection-spawn-interval-seconds: 12.0
+      maximum-reflections: 10
+      reflection-health: 24.0
+      drain-cooldown-seconds: 15.0
+      drain-channel-seconds: 2.2
+      consume-range: 32.0
+      damage-increase-percent-per-soul: 5.0
+      maximum-damage-increase-percent: 50.0
+      shield-restore-per-soul: 25.0
+    black-sun:
+      duration-seconds: 15.0
+      start-radius: 30.0
+      end-radius: 4.0
+      collapse-damage: 12.0
+      # 兼容旧配置保留；黑日葬仪失败时会直接清空生命值，无视护甲与吸收生命。
+      execution-damage: 1000.0
+      fragment-count: 9
+      # 全队共享收集进度；达到数量后所有参战玩家共同受屏障保护。
+      fragment-cost: 6
+      barrier-radius: 3.5
+      furnace-health: 160.0
+    sand-funeral:
+      cooldown-seconds: 20.0
+      duration-seconds: 9.0
+      start-radius: 28.0
+      end-radius: 4.0
+      gap-width-degrees: 42.0
+      hit-radius: 1.8
+      damage-interval-seconds: 0.7
+      damage: 8.0
+      suffocation-per-hit: 1
+      maximum-suffocation: 8
+    scythe-echo:
+      cooldown-seconds: 22.0
+      teleport-count: 3
+      teleport-interval-seconds: 0.45
+      replay-delay-seconds: 2.5
+      slash-range: 8.0
+      hit-radius: 2.0
+      damage: 24.0
+    nether-boundary:
+      cooldown-seconds: 16.0
+      cast-seconds: 1.0
+      duration-seconds: 10.0
+      return-delay-seconds: 3.0
+      half-length: 24.0
+      return-damage: 12.0
+    sunfall:
+      cooldown-seconds: 24.0
+      telegraph-seconds: 2.5
+      wheel-count: 5
+      duration-seconds: 14.0
+      impact-damage: 22.0
+      radiation-radius: 4.5
+      radiation-damage: 5.0
+      radiation-interval-seconds: 1.0
+      armor-break-damage: 45.0
+    pharaoh-edict:
+      cooldown-seconds: 26.0
+      telegraph-seconds: 2.0
+      duration-seconds: 12.0
+      weapon-hit-threshold: 3
+      reflect-damage: 10.0
+      movement-threshold-seconds: 2.5
+      movement-damage: 16.0
+      gaze-dot-threshold: 0.92
+      gaze-threshold-seconds: 2.0
+      petrify-damage: 18.0
+      group-radius: 3.5
+      group-damage: 14.0
+      trigger-cooldown-seconds: 2.0
+    twin-eclipse:
+      cooldown-seconds: 50.0
+      body-health: 180.0
+      revival-window-seconds: 20.0
+      success-damage-percent: 15.0
+
+end-witch:
+  display-name: "&2&l终焉之魔女·伊芙蕾雅"
+  attack-damage: 18.0
+  armor: 14.0
+  movement-speed: 0.29
+  # 普通技能推进、追击响应和战斗动作速度；世界终焉、沉默、转阶段不受影响。
+  action-speed-multiplier: 1.25
+  follow-range: 56.0
+  knockback-resistance: 0.8
+  bossbar-range: 72.0
+  experience: 0
+  reactive-teleport:
+    # 累计受到指定次数的有效玩家伤害后，瞬移到本次攻击者约指定距离外。
+    # 瞬移只改变位置，不中断当前普通技能吟唱；世界终焉期间完全禁用。
+    hit-count: 3
+    distance: 8.0
+  combat-feedback:
+    # 仅在未释放技能的非霸体状态播放受击后仰。
+    hurt-animation-cooldown-seconds: 0.2
+    hurt-knockback-horizontal: 0.18
+    hurt-knockback-vertical: 0.06
+  model:
+    id: "end_witch"
+    scale: 1.0
+  phases:
+    # 三阶段是相互独立的血池；每项可设 1-500000，转阶段会锁血、无敌并回满新阶段。
+    p1-health: 420.0
+    p2-health: 420.0
+    p3-health: 420.0
+    transition-invulnerability-seconds: 2.8
+    # 阶段伤害加成同时影响普通攻击、技能与蚀痕爆炸。
+    phase-two-damage-bonus-percent: 20.0
+    phase-three-damage-bonus-percent: 40.0
+    # P3 超过该时间会强制把终焉刻度推至 100。
+    phase-three-ultimate-timeout-seconds: 150.0
+  end-gauge:
+    maximum: 100.0
+    phase-one-per-second: 1.0
+    phase-two-per-second: 1.5
+    phase-three-per-second: 1.0
+    skill-hit-minimum: 2
+    skill-hit-maximum: 5
+    crystal-reduction: 20.0
+    initial-crystals: 3
+    maximum-crystals: 12
+  marks:
+    damage-increase-percent-per-stack: 5.0
+    second-stack-slow-percent: 10.0
+    third-stack-explosion-damage: 10.0
+    cleanse-gauge-increase: 5.0
+    cleanse-circle-distance: 18.0
+    cleanse-circle-radius: 2.4
+  abilities:
+    # 除各技能自己的 cooldown-seconds 外，这里控制连续施法之间的公共间隔。
+    cast-timing:
+      initial-delay-seconds: 2.25
+      retry-delay-seconds: 0.5
+      phase-one-two-delay-seconds: 1.4
+      phase-three-delay-seconds: 0.9
+      repeated-skill-delay-seconds: 0.4
+    shield-disable-seconds: 5.0
+    forbidden-exchange:
+      cooldown-seconds: 8.0
+    magic-arrows:
+      cooldown-seconds: 6.0
+      speed: 0.75
+      damage: 16.0
+    black-skirt:
+      cooldown-seconds: 9.0
+      damage: 14.0
+    fate-gaze:
+      cooldown-seconds: 10.0
+      range: 48.0
+      damage: 24.0
+    witch-blink:
+      cooldown-seconds: 8.0
+      damage: 18.0
+      echo-damage: 20.0
+    witch-scissors:
+      cooldown-seconds: 12.0
+      radius: 2.2
+      health: 35.0
+      damage: 34.0
+    silent-chant:
+      cooldown-seconds: 18.0
+      rune-health: 18.0
+      red-damage-bonus-percent: 25.0
+      green-heal-percent: 4.0
+    funeral-flowers:
+      cooldown-seconds: 16.0
+      count: 6
+      health: 24.0
+      drain-radius: 5.0
+      drain-damage: 5.0
+      boss-heal: 12.0
+    soul-pawn:
+      cooldown-seconds: 17.0
+      health-percent: 30.0
+      crystal-health: 32.0
+      health-per-extra-player-percent: 25.0
+    time-funeral:
+      cooldown-seconds: 18.0
+      damage: 28.0
+    doom-link:
+      cooldown-seconds: 18.0
+      minimum-distance: 5.0
+      maximum-distance: 13.0
+      damage: 10.0
+    night-meteors:
+      cooldown-seconds: 17.0
+      count: 7
+      damage: 26.0
+    negate-healing:
+      cooldown-seconds: 20.0
+      trigger-amount: 4.0
+      # 1.0 表示将本次治疗量等额转化为伤害。
+      damage-multiplier: 1.0
+    shadow-cage:
+      cooldown-seconds: 18.0
+      pillar-health: 20.0
+      explosion-damage: 25.0
+    heaven-inversion:
+      cooldown-seconds: 22.0
+      safe-radius: 3.0
+      damage: 35.0
+    seven-ends:
+      cooldown-seconds: 28.0
+      damage: 24.0
+    world-end:
+      # 必杀技每场最多一次，因此没有普通技能冷却；吟唱和护盾均可调整。
+      channel-seconds: 12.0
+      # 单人使用基础吟唱时间；每多达到这组人数，吟唱减少 channel-reduction-seconds。
+      players-per-channel-reduction: 2
+      channel-reduction-seconds: 1.0
+      minimum-channel-seconds: 1.0
+      shield-health: 240.0
+      # 每名参战玩家为护盾提供基础值的这个倍数，至少仍使用一份基础值。
+      shield-player-scaling: 0.65
+
+bone-dragon:
+  display-name: "&f&l☠ 骨龙"
+  attack-damage: 32.0
+  # 可配置范围 0-100000；需同时确保服务端允许对应的护甲属性上限。
+  armor: 22.0
+  knockback-resistance: 1.0
+  follow-range: 80.0
+  bossbar-range: 96.0
+  experience: 0
+  minions:
+    # 召唤骷髅与颅骨追踪弹生成的骷髅侍卫共用此存活数量上限；0 表示禁止召唤。
+    max-alive: 20
+  model:
+    id: "skeleton_dragon"
+    # 使用连接正确的原始十格骨龙模型。
+    scale: 1.0
+    # 模型额外水平旋转角；v5 已自动把旧配置旋转 180 度纠正朝向。
+    yaw-offset-degrees: 0.0
+  flight:
+    altitude: 10.0
+    speed: 0.42
+    orbit-radius: 11.0
+  attack:
+    cooldown-seconds: 2.0
+    range: 3.5
+  critical-hit:
+    # 命中模型的 b_head_hitbox 头部碰撞骨骼时，额外增加的伤害百分比。
+    head-damage-increase-percent: 30.0
+  abilities:
+    # 玩家举盾承受骨龙技能时，盾牌进入冷却的时间（原版斧类破盾为约 5 秒）。
+    shield-disable-seconds: 5.0
+    tail-sweep:
+      cooldown-seconds: 8.0
+      range: 8.0
+      damage: 28.0
+      knockback: 1.6
+    grab:
+      cooldown-seconds: 18.0
+      capture-range: 4.5
+      capture-damage: 10.0
+      lift-height: 10.0
+    skull-barrage:
+      cooldown-seconds: 22.0
+      count: 4
+      speed: 0.28
+      turn-rate: 0.09
+      lifetime-seconds: 12.0
+      hit-radius: 1.35
+      damage: 12.0
+      guard-count: 3
+      guard-health: 36.0
+      guard-damage: 9.0
+    fire-breath:
+      cooldown-seconds: 16.0
+      duration-seconds: 5.0
+      range: 22.0
+      cone-degrees: 32.0
+      damage: 8.0
+      damage-interval-ticks: 10
+      fire-ticks: 80
+    summon-skeletons:
+      cooldown-seconds: 24.0
+      count: 8
+      health: 40.0
+      damage: 10.0
+    death-summon:
+      # 每个阶段开始时自动召唤一次“死之统治者”。
+      min-count: 1
+      max-count: 3
+      heal-interval-seconds: 10.0
+      # 每名存活的死之统治者每次恢复当前阶段已损失生命值的百分比。
+      missing-health-heal-percent: 5.0
+      ruler-health: 60.0
+      ruler-damage: 12.0
+    skeleton-absorb:
+      # 每次普通召唤或阶段死之召唤结束后，最多吸收的普通骷髅数量；不包含死之统治者。
+      max-count: 10
+      # 每次吸收结束后至少保留的普通骷髅数量。
+      min-remaining: 5
+      # 达到伤害加成上限后，后续每次吸收的数量上限。
+      post-cap-max-count: 5
+      # 每吸收一只骷髅，骨龙所有直接伤害永久增加的百分比。
+      damage-increase-percent-per-skeleton: 1.0
+      # 吸收骷髅能够提供的总伤害加成上限。
+      max-damage-increase-percent: 30.0
+    meteor-rain:
+      cooldown-seconds: 30.0
+      duration-seconds: 10.0
+      spawn-interval-ticks: 8
+      target-radius: 13.0
+      fall-height: 18.0
+      fall-ticks: 20
+      impact-radius: 3.25
+      damage: 24.0
+    bone-prison:
+      cooldown-seconds: 20.0
+      target-count: 3
+      radius: 2.5
+      height: 5
+      duration-seconds: 10.0
+      damage: 10.0
+      launch-velocity: 1.05
+    bone-spikes:
+      # 仅在 P2/P3 使用，以骨龙为中心逐圈向外爆发骨刺。
+      cooldown-seconds: 14.0
+      damage: 22.0
+      radius: 12.0
+      rings: 4
+      spikes-per-ring: 18
+      hit-radius: 1.75
+    ground-charge:
+      cooldown-seconds: 10.0
+      duration-seconds: 2.5
+      speed: 1.15
+      hit-radius: 3.5
+      damage: 26.0
+      knockback: 1.8
+  phases:
+    # 三个阶段是互相独立的生命池；上一阶段清空后，下一阶段血条会重新补满。
+    # 每个阶段可配置范围均为 1-500000；需同时把服务端最大生命属性上限设为 500000。
+    p1-health: 409.6
+    p2-health: 307.2
+    p3-health: 307.2
+    # P1→P2 与 P2→P3 的新阶段血条补满后，继续保持锁血无敌的时间。
+    transition-invulnerability-seconds: 0.5
+    p3-auto-summon-seconds: 60.0
+  stun:
+    # 骨龙坠地后的眩晕持续时间，可热加载修改。
+    duration-seconds: 8.0
+    p1-hit-count: 10
+  death-animation:
+    duration-seconds: 5.0
+
+# 所有玩家可见提示均集中在此处。支持 & 颜色代码和 {占位符}。
+messages:
+  slayer:
+    xp-awarded: "&6讨伐完成！&f获得 &e{xp} &f点讨伐经验。"
+  command:
+    no-permission: "&c你没有权限使用该管理指令。"
+    player-only: "&c该命令只能由玩家执行。"
+    spawn-player-only: "&c该指令需要玩家执行，以确定生成位置。"
+    error: "&c{message}"
+    usage: "用法：{usage}"
+    unknown-boss: "&c未知 Boss：{type}"
+    spawned-bone-dragon: "&a已生成骨龙：{id}"
+    spawned-endsun-guard: "&6已生成烬日冥卫·阿努赫：{id}"
+    spawned-end-witch: "&2已生成终焉之魔女·伊芙蕾雅：{id}"
+    spawn-failed: "&c生成失败：{message}"
+    removed-all: "&e已移除 {count} 个 Boss。"
+    console-kill-usage: "控制台请使用 /yknboss kill all"
+    no-nearby-boss: "&c{range} 格内没有 Boss。"
+    removed-nearest: "&e已移除最近的 Boss。"
+    reloaded: "&aYknBoss 配置已热重载，自动补齐了 {count} 个缺失配置项。"
+    reload-failed: "&c配置重载失败，请查看控制台：{message}"
+    arena-created: "&a{count} 个骨龙竞技场实例均已就绪。"
+    arena-boss-spawned: "&c已在竞技场中央召唤骨龙：{id}"
+    arena-reset: "&a骨龙竞技场已重置：{world}"
+    arena-info: "&7骨龙竞技场：{world} | 实例 {active}/{instances} 使用中 | 已加载 {loaded} | 半径 {radius} | 地面Y {floor-y} | {state}"
+    arena-state-loaded: "已加载"
+    arena-state-unloaded: "未加载"
+    enter-usage: "&e用法：/yknboss enter <bone_dragon|endsun_guard|end_witch>"
+    unknown-raid: "&c未知副本：{raid}，可用 bone_dragon、endsun_guard 或 end_witch"
+    arena-usage: "&e用法：/yknboss arena <create|spawn|reset|info>"
+    arena-failed: "&c竞技场操作失败：{message}"
+    admin-usage: "&e用法：/yknboss admin <special|bypass>"
+    admin-bypass-enabled: "&a已开启观战模式切换绕过；现在可以在观战副本中切换游戏模式。"
+    admin-bypass-disabled: "&e已关闭观战模式切换绕过。"
+    spec-usage: "&e用法：/yknboss spec <玩家ID|leave>"
+    info:
+      dragon-count: "&b当前骨龙数量：{count}"
+      dragon-line: "&7- {id} | HP {health}/{max-health} | 阶段 {phase} | 技能 {skill} | {world} {x} {y} {z}"
+      endsun-count: "&6当前烬日冥卫·阿努赫数量：{count}"
+      endsun-line: "&7- {id} | HP {health}/{max-health} | {phase} | {skill} | 日蚀 {eclipse} | {world} {x} {y} {z}"
+      witch-count: "&2当前终焉之魔女·伊芙蕾雅数量：{count}"
+      witch-line: "&7- {id} | HP {health}/{max-health} | {phase} | {skill} | 终焉 {gauge} | {world} {x} {y} {z}"
+    help-player:
+      - "&b/yknboss enter <bone_dragon|endsun_guard|end_witch> &7- 进入对应 Boss 副本"
+      - "&c/yknboss giveup &7- 队长放弃当前 Boss 副本"
+    help-admin:
+      - "&b/yknboss spawn bone_dragon"
+      - "&6/yknboss spawn endsun_guard"
+      - "&2/yknboss spawn end_witch"
+      - "&6/yknboss kill [all]"
+      - "&6/yknboss info"
+      - "&6/yknboss reload"
+      - "&b/yknboss arena <create|spawn|reset|info>"
+      - "&d/yknboss admin special &7- 打开特殊物品目录"
+      - "&d/yknboss admin bypass &7- 开关观战副本游戏模式限制绕过"
+    help-spec:
+      - "&b/yknboss spec <玩家ID> &7- 观战该玩家正在挑战的 Boss 副本"
+      - "&b/yknboss spec leave &7- 退出观战并返回原位置"
+
+  party:
+    command-player-only: "&c队伍指令只能由玩家执行。"
+    created: "&a队伍创建成功，你现在是队长。"
+    invite:
+      received: "&b{player} 邀请你加入队伍。"
+      accept-hint: "&e输入 /party accept 接受，邀请 {seconds} 秒后失效。"
+      accept-button: "&a&l[点此同意]"
+      accept-hover: "&7点击接受这条组队邀请"
+      sent: "&a已邀请 {player}。"
+      declined: "&7已拒绝队伍邀请。"
+    member:
+      joined: "&a{player} 加入了队伍。"
+      removed: "&e{player} 已被移出队伍。"
+      you-removed: "&c你已被移出队伍。"
+      new-leader: "&6{player} 成为了新队长。"
+      left: "&e{player} 离开了队伍。"
+      you-left: "&7你已离开队伍。"
+    disbanded-empty: "&7队伍已解散。"
+    disbanded: "&c队长解散了队伍。"
+    chat: "&b[队伍] &f{player}: &7{message}"
+    list:
+      header: "&b队伍成员 {current}/{max}："
+      leader-prefix: "★ "
+      member-prefix: "- "
+      online: "&a{prefix}{player} [在线]"
+      offline: "&7{prefix}{player} [离线]"
+    help:
+      - "&6队伍指令："
+      - "&e/p i <玩家ID> &7（/party invite，无队伍时自动创建）&e | accept | decline"
+      - "&e/party remove <玩家ID> | /p t <玩家ID>"
+      - "&b/yknboss enter <bone_dragon|endsun_guard|end_witch> &7（队长创建对应团本）"
+      - "&e/p l | /p d | /party list | /party chat <消息>"
+    usage:
+      invite: "用法：/party invite <玩家ID> 或 /p i <玩家ID>"
+      remove: "用法：/party remove <玩家ID>"
+      transfer: "用法：/party transfer <玩家ID> 或 /p t <玩家ID>"
+      chat: "用法：/party chat <消息>"
+    error:
+      invite-self: "不能邀请自己"
+      invite-repeat: "你需要等待 {seconds} 秒后才能再次邀请该玩家"
+      full: "队伍人数已达到 {max} 人上限"
+      no-invite: "没有有效的队伍邀请"
+      invite-disbanded: "邀请对应的队伍已经解散"
+      remove-self: "队长不能移除自己，请使用 /party transfer 或 /party disband"
+      not-member: "该玩家不在你的队伍中"
+      already-leader: "你已经是队长"
+      no-party: "你当前没有队伍，请先使用 /p invite <玩家ID> 自动创建队伍"
+      leader-only: "只有队长可以执行该操作"
+      already-in-party: "你已经加入了一个队伍"
+      member-in-instance: "副本进行中不能移除该玩家"
+      instance-locked: "Boss 副本进行中不能修改队伍"
+      member-not-found: "该玩家不在你的队伍中：{player}"
+      player-not-online: "玩家不在线或不存在：{player}"
+
+  arena:
+    preparing: "&7正在重置骨龙副本 {slot}/{instances}，完成后将自动进入……"
+    entered: "&b队伍已进入骨龙副本 {slot}/{instances}（{online}/{members} 人在线）。右键中央石碑开始召唤。"
+    teleport-denied: "&c该骨龙副本属于另一个队伍，请通过队长进入自己的副本。"
+    not-member: "&c你不是这个副本队伍的成员。"
+    resetting: "&e竞技场正在重置，暂时无法召唤。"
+    summoning: "&d骨龙石碑正在回应召唤……"
+    boss-already-active: "&c骨龙已经苏醒。"
+    block-break-denied: "&7骨龙副本中禁止破坏方块。"
+    block-place-denied: "&7骨龙副本中禁止放置方块。"
+    item-drop-denied: "&7骨龙副本中禁止丢弃物品。"
+    summon-failed: "&c召唤失败：{message}"
+    victory: "&6骨龙已被击杀！{seconds} 秒后离开副本。"
+    return-countdown: "&e{seconds} 秒后离开骨龙副本。"
+    returned: "&a骨龙副本已结束，你已返回进入副本前的位置。"
+    spectate:
+      entered: "&b已进入玩家 &f{player}&b 所在的骨龙副本观战。"
+      left: "&a已退出观战并返回原位置。"
+      gamemode-locked: "&c观战骨龙副本期间无法切换游戏模式。"
+    challenge-timer:
+      started: "&e骨龙挑战限时 &f{time}&e，请在时间结束前击杀骨龙！"
+      remaining: "&c剩余挑战时间：&f{time}"
+    player-down: "&e{player} 已倒下，{seconds} 秒后复活。"
+    respawn:
+      wait: "&e你将在 {seconds} 秒后复活。"
+      actionbar: "&c复活倒计时：{seconds} 秒"
+      complete: "&a你已复活并重新加入战斗。"
+    challenge-failed:
+      wipe: "&4挑战失败：全队均处于死亡等待状态，即将离开副本。"
+      giveup: "&c队长 {player} 放弃了挑战，全队即将离开副本。"
+      timeout: "&4挑战失败：未能在 {time} 内击杀骨龙，全队即将返回。"
+    summon-title:
+      title: "&4骨龙苏醒"
+      subtitle: "&7击败它，{seconds} 秒后离开副本"
+    error:
+      not-session-party: "你不属于这个正在运行的副本队伍"
+      already-in-instance: "你已经在另一个骨龙副本中"
+      create-leader-only: "只有队长可以创建骨龙副本"
+      all-busy: "{count} 个骨龙副本都在使用中，请稍后再试"
+      party-too-large: "副本最多允许 {max} 名玩家"
+      not-in-instance: "你当前不在骨龙副本中"
+      giveup-leader-only: "只有队长可以放弃副本挑战"
+      already-completed: "骨龙已被击败，副本正在等待结算，无法放弃挑战"
+      already-spectating: "你已经在观战，请先使用 /yknboss spec leave"
+      not-spectating: "你当前没有在观战"
+      spectate-participant: "副本参战成员不能进入其他副本观战"
+      spectate-not-found: "指定玩家未在可观战的骨龙副本中：{player}"
+      party-member-in-other-instance: "队伍中有成员正在另一个 Boss 副本中"
+
+  endsun-arena:
+    preparing: "&7正在重置阿努赫副本 {slot}/{instances}，完成后将自动进入……"
+    entered: "&6队伍已进入阿努赫副本 {slot}/{instances}（{online}/{members} 人在线）。右键中央烬日祭坛开始召唤。"
+    teleport-denied: "&c该阿努赫副本属于另一个队伍，请通过队长进入自己的副本。"
+    not-member: "&c你不是这个副本队伍的成员。"
+    resetting: "&e烬日竞技场正在重置，暂时无法召唤。"
+    summoning: "&6烬日祭坛正在回应召唤……"
+    boss-already-active: "&c烬日冥卫·阿努赫已经降临。"
+    block-break-denied: "&7阿努赫副本中禁止破坏方块。"
+    block-place-denied: "&7阿努赫副本中禁止放置方块。"
+    item-drop-denied: "&7阿努赫副本中禁止丢弃物品。"
+    summon-failed: "&c召唤失败：{message}"
+    victory: "&6烬日冥卫·阿努赫已被击杀！{seconds} 秒后离开副本。"
+    return-countdown: "&e{seconds} 秒后离开阿努赫副本。"
+    returned: "&a阿努赫副本已结束，你已返回进入副本前的位置。"
+    spectate:
+      entered: "&6已进入玩家 &f{player}&6 所在的阿努赫副本观战。"
+      left: "&a已退出观战并返回原位置。"
+      gamemode-locked: "&c观战阿努赫副本期间无法切换游戏模式。"
+    challenge-timer:
+      started: "&e阿努赫挑战限时 &f{time}&e，请在时间结束前将其击杀！"
+      remaining: "&c剩余挑战时间：&f{time}"
+    player-down: "&e{player} 已倒下，{seconds} 秒后复活。"
+    respawn:
+      wait: "&e你将在 {seconds} 秒后复活。"
+      actionbar: "&c复活倒计时：{seconds} 秒"
+      complete: "&a你已复活并重新加入战斗。"
+    challenge-failed:
+      wipe: "&4挑战失败：全队均处于死亡等待状态，即将离开副本。"
+      giveup: "&c队长 {player} 放弃了挑战，全队即将离开副本。"
+      timeout: "&4挑战失败：未能在 {time} 内击杀阿努赫，全队即将返回。"
+    summon-title:
+      title: "&6烬日冥卫降临"
+      subtitle: "&7击败阿努赫，{seconds} 秒后离开副本"
+    error:
+      not-session-party: "你不属于这个正在运行的副本队伍"
+      already-in-instance: "你已经在另一个 Boss 副本中"
+      create-leader-only: "只有队长可以创建阿努赫副本"
+      all-busy: "{count} 个阿努赫副本都在使用中，请稍后再试"
+      party-too-large: "副本最多允许 {max} 名玩家"
+      party-member-in-other-instance: "队伍中有成员正在另一个 Boss 副本中"
+      not-in-instance: "你当前不在阿努赫副本中"
+      giveup-leader-only: "只有队长可以放弃副本挑战"
+      already-completed: "阿努赫已被击败，副本正在等待结算，无法放弃挑战"
+      already-spectating: "你已经在观战，请先使用 /yknboss spec leave"
+      not-spectating: "你当前没有在观战"
+      spectate-participant: "副本参战成员不能进入其他副本观战"
+      spectate-not-found: "指定玩家未在可观战的阿努赫副本中：{player}"
+
+  witch-arena:
+    preparing: "&7正在重置伊芙蕾雅副本 {slot}/{instances}，完成后将自动进入……"
+    entered: "&2队伍已进入终焉魔女副本 {slot}/{instances}（{online}/{members} 人在线）。右键中央终焉祭坛开始召唤。"
+    teleport-denied: "&c该伊芙蕾雅副本属于另一个队伍，请通过队长进入自己的副本。"
+    not-member: "&c你不是这个副本队伍的成员。"
+    resetting: "&e终焉仪式场正在重置，暂时无法召唤。"
+    summoning: "&2终焉祭坛正在回应召唤……"
+    boss-already-active: "&c终焉之魔女·伊芙蕾雅已经降临。"
+    block-break-denied: "&7伊芙蕾雅副本中禁止破坏方块。"
+    block-place-denied: "&7伊芙蕾雅副本中禁止放置方块。"
+    item-drop-denied: "&7伊芙蕾雅副本中禁止丢弃物品。"
+    summon-failed: "&c召唤失败：{message}"
+    victory: "&2终焉之魔女·伊芙蕾雅已被击败！{seconds} 秒后离开副本。"
+    return-countdown: "&e{seconds} 秒后离开伊芙蕾雅副本。"
+    returned: "&a伊芙蕾雅副本已结束，你已返回进入副本前的位置。"
+    spectate:
+      entered: "&2已进入玩家 &f{player}&2 所在的伊芙蕾雅副本观战。"
+      left: "&a已退出观战并返回原位置。"
+      gamemode-locked: "&c观战伊芙蕾雅副本期间无法切换游戏模式。"
+    challenge-timer:
+      started: "&e伊芙蕾雅挑战限时 &f{time}&e，请在世界终焉前将其击败！"
+      remaining: "&c剩余挑战时间：&f{time}"
+    player-down: "&e{player} 已倒下，{seconds} 秒后复活。"
+    respawn:
+      wait: "&e你将在 {seconds} 秒后复活。"
+      actionbar: "&c复活倒计时：{seconds} 秒"
+      complete: "&a你已复活并重新加入战斗。"
+    challenge-failed:
+      wipe: "&4挑战失败：全队均处于死亡等待状态，即将离开副本。"
+      giveup: "&c队长 {player} 放弃了挑战，全队即将离开副本。"
+      timeout: "&4挑战失败：未能在 {time} 内击败伊芙蕾雅，全队即将返回。"
+    summon-title:
+      title: "&2终焉之魔女降临"
+      subtitle: "&7阻止终焉仪式，击败伊芙蕾雅"
+    error:
+      not-session-party: "你不属于这个正在运行的副本队伍"
+      already-in-instance: "你已经在另一个 Boss 副本中"
+      create-leader-only: "只有队长可以创建伊芙蕾雅副本"
+      all-busy: "{count} 个伊芙蕾雅副本都在使用中，请稍后再试"
+      party-too-large: "副本最多允许 {max} 名玩家"
+      party-member-in-other-instance: "队伍中有成员正在另一个 Boss 副本中"
+      not-in-instance: "你当前不在伊芙蕾雅副本中"
+      giveup-leader-only: "只有队长可以放弃副本挑战"
+      already-completed: "伊芙蕾雅已被击败，副本正在等待结算，无法放弃挑战"
+      already-spectating: "你已经在观战，请先使用 /yknboss spec leave"
+      not-spectating: "你当前没有在观战"
+      spectate-participant: "副本参战成员不能进入其他副本观战"
+      spectate-not-found: "指定玩家未在可观战的伊芙蕾雅副本中：{player}"
+
+  boss:
+    bone-dragon:
+      bossbar: "{name} &c[{phase}]"
+      wing-break-start: "&c&l骨龙的翼骨开始断裂！"
+      phase-three: "&4&l骨龙的骸骨被血色怨念点燃！［P3］"
+      grab-released: "&c骨龙松开了利爪！"
+      phase-two: "&6&l翼骨尽碎，骨龙进入地面狂暴阶段！［P2］"
+      stunned: "&e&l骨龙失去平衡，坠向地面！"
+      recovered-flight: "&b骨龙重新振翅升空！"
+      recovered-ground: "&6骨龙挣扎起身，进入地面狂暴！"
+      death-bossbar: "&8&l☠ 骨龙［崩解］"
+      death-start: "&8&l骨龙的骨架开始崩解……"
+      death-complete: "&7骨龙的骸骨化为尘埃。"
+      entrance-start: "&7&l沉睡的骸骨正在苏醒……"
+      entrance-complete: "&b&l骨龙展开双翼，降临战场！"
+      head-critical: "&c&l头部暴击！&f伤害增加 {bonus}%"
+      death-summon: "&4&l死之召唤！&c{count} 名死之统治者响应了骨龙。"
+      absorb-start: "&8&l骨龙开始吞噬附近的骷髅……"
+      absorb-complete: "&c骨龙吸收了 {count} 只骷髅，当前伤害总加成为 {bonus}%。"
+      absorb-curse: "&5&l亡骨诅咒！&8骨龙吞噬了第 {count} 具骸骨，所有挑战者陷入黑暗与迟缓！"
+      bone-spikes: "&f&l骨刺爆发！&7白骨正在从地下向四周蔓延！"
+      death-fallback: "&b骨龙的魂火熄灭了。"
+    endsun-guard:
+      bossbar: "{name} &8[{phase}] &e盾 {shield} &5蚀 {eclipse}"
+      eclipse-meter: "&6日蚀刻度 &f{value}&7/&f{max}"
+      scythe-return: "&5&l冥镰回斩！&d镰刃将沿原路径返回。"
+      soul-fracture: "&5魂裂：&d你的灵魂被回程镰刃撕裂。"
+      judgement-lock: "&d&l紫晶审判锁定了 {player}！&7其他玩家潜行可制造阴影区。"
+      judgement-avoided: "&8你躲入队友的阴影，避开了紫晶审判。"
+      crown-start: "&6&l灼魂冠冕点燃！&e击碎任意冥火图腾可将其熄灭。"
+      totem-name: "&5&l冥火图腾"
+      crown-extinguished: "&3&l冥火图腾破碎，灼魂冠冕暂时熄灭！"
+      shield-start: "&e&l耀阳圣盾！&7停止攻击正面，从背后击中符文。"
+      shield-broken: "&a&l破招成功！&f阿努赫失衡并进入易伤状态。"
+      soul-drain: "&5&l亡者心炉正在吸取灵魂倒影！"
+      reflection-name: "&8灵魂倒影·{player}"
+      reflections-spawned: "&8场上出现了灵魂倒影；引导冥镰将其提前斩灭。"
+      soul-consumed: "&4心炉吞噬了 {count} 个亡魂，阿努赫伤害加成达到 {bonus}%。"
+      eclipse-form: "&4&l日蚀刻度已满——阿努赫进入日蚀形态！"
+      black-sun-start: "&0&l终焉技——黑日葬仪！&7全队收集盾牌残片组成遮光屏障，并攻击胸前心炉。"
+      fragment-name: "&e耀阳圣盾残片"
+      fragment-lore: "&7拾取后自动计入团队进度，集齐后全队获得遮光屏障。"
+      fragment-not-enough: "&c需要至少 {cost} 块盾牌残片才能组成屏障。"
+      fragment-progress: "&e团队盾牌残片：{value}/{cost}"
+      barrier-built: "&8&l盾牌残片已组成团队遮光屏障，全队将免疫黑日处决！"
+      furnace-health: "&5亡者心炉 &f{health}&7/&f{max}"
+      black-sun-protected: "&8遮光屏障挡住了黑日终焉。"
+      black-sun-executed: "&0黑日葬仪完成，你的灵魂被彻底焚尽。"
+      black-sun-survived: "&6你依靠护甲承受住了黑日葬仪的终焉冲击！"
+      black-sun-interrupted: "&a&l亡者心炉被打破，黑日葬仪中断！"
+      sand-funeral: "&6&l黄沙送葬！&e跟随收缩沙暴中的缺口移动。"
+      suffocation: "&6窒息层数：&f{stacks}"
+      scythe-echo: "&5&l镰影分魂！&d阿努赫锁定了 {player}，真身心炉仍会发光。"
+      nether-boundary: "&5&l亡者禁行！&7穿过冥界界线会被灵魂强制拉回。"
+      boundary-crossed: "&8你的灵魂被留在界线处，{seconds} 秒后将被拉回！"
+      sunfall: "&6&l日轮坠落！&e避开标记，并诱导回程冥镰将日轮击向阿努赫。"
+      sunwheel-shield-hit: "&e日轮撞击耀阳圣盾，削减了 {damage} 点护盾能量！"
+      sunwheel-furnace-hit: "&5日轮撞击亡者心炉，造成了 {damage} 点破坏！"
+      sunwheel-armor-break: "&6日轮击中阿努赫，护甲失衡！"
+      edict-warning: "&d紫晶变色——法老即将颁布「{edict}」！"
+      edict-name:
+        weapon: "禁武"
+        movement: "禁足"
+        gaze: "禁视"
+        group: "禁群"
+      edict-active: "&5&l法老敕令：{edict}！"
+      edict-ended: "&7法老敕令「{edict}」已经解除。"
+      edict-weapon-punish: "&c禁武惩罚：连续攻击触发反伤！"
+      edict-movement-punish: "&b禁足惩罚：持续移动引来审判雷霆！"
+      edict-gaze-punish: "&d禁视惩罚：直视阿努赫使身体石化！"
+      edict-group-punish: "&c禁群惩罚：与队友靠得过近引发爆炸！"
+      twins-start: "&6&l双生蚀影！&e烈日之躯只能近战，&5冥夜之影只能远程；必须在 {seconds} 秒内连续击败。"
+      twins-sun-name: "&6&l烈日之躯"
+      twins-night-name: "&5&l冥夜之影"
+      twins-sun-bossbar: "&6&l烈日之躯 &f{health}&7/&f{max}"
+      twins-night-bossbar: "&5&l冥夜之影 &f{health}&7/&f{max}"
+      twins-magic-source: "魔法伤害"
+      twins-sun-immune: "&6烈日之躯免疫远程伤害，必须近战攻击。"
+      twins-night-immune: "&5冥夜之影免疫近战伤害，必须使用远程或魔法攻击。"
+      twins-body-defeated: "&a{player} 击败了「{body}」！"
+      twins-revive-warning: "&c另一具蚀影必须在 {seconds} 秒内击败，否则倒下者将吸取存活分身一半的当前生命复活！"
+      twins-revived: "&4时间已到，「{body}」重新复活！"
+      twins-revived-transfer: "&4时间已到，「{body}」从「{donor}」吸取 {health} 点生命并重新复活！"
+      twins-defeated: "&a&l双生蚀影同时崩解，阿努赫受到反噬！"
+      phase-two: "&5&l第二阶段：冥界审判官——亡者心炉已经开启。"
+      phase-three: "&4&l最终阶段：蚀日真身——阿努赫丢弃圣盾，双手执镰！"
+      entrance-start: "&6&l烬日祭坛苏醒，阿努赫正从冥焰中降临……"
+      entrance-complete: "&4&l烬日冥卫·阿努赫降临战场！"
+      death-start: "&8&l阿努赫的亡者心炉开始崩裂……"
+      death: "&6烬日熄灭，阿努赫的盔甲化为余烬。"
+    end-witch:
+      bossbar: "{name} &8[{phase}]"
+      bossbar-status: " &2蚀痕 &f{mark}&7/3 &5终焉刻度 &f{gauge}&7/&f{max}"
+      gaugebar: "&2&l终焉刻度 &f{value}&7/&f{max}"
+      phase-two: "&5&l第二阶段：破碎时刻——终焉水晶于四角显现！"
+      phase-three: "&2&l第三阶段：终焉降临——伊芙蕾雅开始终末轮转！"
+      mark: "&2魔女蚀痕：&f{value}&7/3"
+      mark-cleansed: "&f净白法阵清除了蚀痕；&5终焉刻度升至 {gauge}。"
+      crystal-broken: "&a终焉水晶被魔女的法术击碎，终焉刻度降至 {gauge}！"
+      crystal-boss-only: "&7终焉水晶不受玩家攻击；请引导魔女的技能命中它。"
+      silenced: "&f&l三个咏唱文字全部破碎，伊芙蕾雅被沉默 4 秒！"
+      inverse-healing: "&0&l逆疗诅咒！&7短时间内的大量治疗将转化为伤害。"
+      soul-lost: "&5灵魂结晶被伊芙蕾雅吸收，封存的生命已无法取回。"
+      aux:
+        rune_red: "&c伤害文字"
+        rune_green: "&a治愈文字"
+        rune_cyan: "&b复诵文字"
+        scissors: "&8魔女裁决"
+        flower: "&8葬仪魔花"
+        soul: "&3灵魂结晶"
+        cage: "&8影之牢笼"
+      final-speed: "&2终末轮转：伊芙蕾雅的移动速度提升！"
+      final-arrows: "&3终末轮转：终焉魔矢数量增加！"
+      final-wave: "&f终末轮转：黑裙冲击波范围扩大！"
+      world-end-start: "&0&l必杀——世界终焉！&a在 {seconds} 秒内击破终焉护盾！"
+      world-end-shield: "&2终焉护盾 &f{health}"
+      world-end-broken: "&a&l终焉护盾破碎！伊芙蕾雅虚弱 8 秒，刻度回退至 80。"
+      world-end-failed: "&0&l终焉仪式完成——世界归于寂静。"
+      skill:
+        forbidden_exchange: "&d禁忌交换！&7相同法阵标记的目标即将交换位置与负面状态。"
+        magic_arrows: "&3终焉魔矢！&7最后一枚会预判目标的移动方向。"
+        black_skirt: "&f黑裙之下！&7跳过向外扩散的白色冲击波。"
+        fate_gaze: "&a命运凝视！&7绿色光束可以生成或击碎终焉水晶。"
+        witch_blink: "&5魔女闪烁！&7绿色眼部粒子标记的是真身。"
+        witch_scissors: "&8魔女裁决！&7队友可攻击巨剪，单人则冲刺离开夹击区域。"
+        silent_chant: "&c无声咏唱！&7击碎红、绿、青三个文字以沉默魔女。"
+        funeral_flowers: "&0葬花仪式！&7控制魔花的击破位置，别让魔女进入治愈区。"
+        soul_pawn: "&5灵魂典当！&7在 8 秒内击碎结晶以取回被封存的生命。"
+        time_funeral: "&8时间葬礼！&7远离彼此的残影，并准备应对回溯爆炸。"
+        doom_link: "&3厄运连线！&7保持中等距离，让连线穿过魔女可令其命数动摇。"
+        night_meteors: "&2夜幕坠星！&7法阵标记落点；陨星可以击碎终焉水晶。"
+        negate_healing: "&0否定治疗！&7最近接受治疗的挑战者已被逆疗诅咒锁定。"
+        shadow_cage: "&8影之牢笼！&7击碎一根尖柱制造出口，别停留在中央。"
+        heaven_inversion: "&f天地反转！&7落入白色安全区可免伤并获得逆命之力。"
+        seven_ends: "&2七重终焉！&7连续避开七次预警攻击可获得逆命者效果。"
+        world_end: "&0&l世界终焉的巨大法阵正在展开！"
+  entity:
+    death-ruler: "&4&l死之统治者"
+
+  special:
+    overflow-dropped: "&e背包空间不足，剩余物品已掉落在脚下。"
+    rainbow:
+      name: "&c彩&e虹"
+      received: "&a已获得 {amount} 个特殊物品「{item}」。"
+      lore:
+        - "&7动态纹理每 0.5 秒变换一次颜色。"
+        - "&6佩戴在头部时：最大生命值 +100"
+        - "&8固定物品与 NBT，仅改变显示颜色"
+        - "&8特殊物品 · 暂无掉落渠道"
+    infernal-grimoire:
+      name: "&4&l炼狱魔导书"
+      received: "&a已获得 {amount} 个特殊物品「{item}」。"
+      companion-enabled: "&6炼狱魔导书从背包中苏醒，在你的左侧燃烧悬浮。"
+      companion-disabled: "&7炼狱魔导书已经收回，悬浮形态消失。"
+      companion-no-space: "&c背包主储存区没有空位，无法收起并召唤炼狱魔导书。"
+      lore:
+        - "&7复现自 CraftClover 的立体魔导书外观"
+        - "&6右键：&f召唤或收回左侧悬浮魔导书"
+        - "&8物品离开背包后，悬浮形态会自动消失"
+        - "&8特殊物品 · 暂无掉落渠道"
+    ancient-codex:
+      name: "&b&l上古法典"
+      received: "&a已获得 {amount} 个特殊物品「{item}」。"
+      companion-enabled: "&b上古法典已经在你的左侧悬浮。"
+      companion-disabled: "&7上古法典已经收回。"
+      companion-no-space: "&c背包主储存区没有空位，无法收起并召唤上古法典。"
+      companion-model-unavailable: "&c上古法典模型尚未加载，请安装 BetterModel 模型包并执行 /bettermodel reload。"
+      lore:
+        - "&7一本在施法者身侧悬浮的古老法典"
+        - "&b右键：&f召唤或收回左侧悬浮法典"
+        - "&8物品离开背包后，悬浮形态会自动消失"
+        - "&8模型来源：Flying Magic Book（CC BY-SA 4.0）"
+        - "&8特殊物品 · 暂无掉落渠道"
+    gui:
+      catalog-title: "&5特殊物品"
+      detail-title: "&5特殊物品：{item}"
+      catalog-entry-lore:
+        - ""
+        - "&e左键点击查看领取选项"
+      obtain:
+        name: "&a获得"
+        lore:
+          - "&e左键：获得 1 个"
+          - "&eShift + 左键：获得一组"
+      back:
+        name: "&c返回"
+        lore:
+          - "&7左键返回特殊物品列表"

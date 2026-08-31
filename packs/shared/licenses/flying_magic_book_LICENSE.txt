@@ -1,0 +1,13 @@
+Flying Magic Book attribution
+=============================
+
+This work is based on "Flying Magic Book"
+https://sketchfab.com/3d-models/flying-magic-book-95ee5c76e08442a5ad00e2b02a8270b9
+by Organization
+https://sketchfab.com/organizationx
+
+Licensed under Creative Commons Attribution-ShareAlike 4.0 International:
+https://creativecommons.org/licenses/by-sa/4.0/
+
+YknBoss adaptation: the supplied glTF materials were adapted into a Minecraft
+open-book item model used by the hovering ancient codex special item.

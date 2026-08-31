@@ -1,0 +1,24 @@
+info:
+  namespace: yknboss
+items:
+  rainbow:
+    enabled: true
+    display_name: "彩虹"
+    resource:
+      material: PAPER
+      generate: false
+      model_path: item/rainbow
+  infernal_grimoire:
+    enabled: true
+    display_name: "炼狱魔导书"
+    resource:
+      material: PAPER
+      generate: false
+      model_path: item/infernal_grimoire
+  ancient_codex:
+    enabled: true
+    display_name: "上古法典"
+    resource:
+      material: PAPER
+      generate: false
+      model_path: item/ancient_codex

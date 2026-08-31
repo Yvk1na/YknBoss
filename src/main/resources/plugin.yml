@@ -1,0 +1,27 @@
+name: YknBoss
+version: '${version}'
+main: cn.yknboss.YknBossPlugin
+api-version: '1.21.10'
+authors: [ykn]
+description: Minecraft RPG Boss 插件：骨龙与烬日冥卫·阿努赫（Paper 1.21.10+）
+depend: [Multiverse-Core]
+softdepend: [AuraSkills, ItemsAdder, CraftEngine, BetterModel]
+commands:
+  yknboss:
+    description: 管理 YknBoss、Boss 副本与特殊物品
+    usage: /yknboss <enter|giveup|spec|spawn|kill|info|reload|arena|admin>
+  party:
+    description: 创建和管理多人 Boss 副本队伍
+    usage: /party <invite|accept|decline|remove|transfer|leave|disband|list|chat>
+    aliases: [p]
+    permission: yknboss.party
+permissions:
+  yknboss.admin:
+    description: 允许管理和生成 Boss
+    default: op
+  yknboss.party:
+    description: 允许使用多人副本队伍指令
+    default: true
+  yknboss.spec:
+    description: 允许以观察者模式进入其他队伍的 Boss 副本
+    default: op

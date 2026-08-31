@@ -1,0 +1,11 @@
+YknBoss Boss 模型（BetterModel 3.4.1）
+
+1. 停止服务器。
+2. 将本压缩包内 models 文件夹合并到 plugins/BetterModel/models。
+3. 将 plugins/BetterModel/config.yml 中的 min-sight 设为 0，避免近战距离停止模型动画包。
+4. 启动服务器，或执行 /bettermodel reload。
+5. 用 /yknboss spawn bone_dragon 或 /yknboss spawn endsun_guard 测试。
+
+插件最低目标为 Paper 1.21.10，使用 JDK 25 编译。
+压缩包包含 skeleton_dragon 与 endsun_anuhe；缺少对应模型时，生成指令会显示原因且不会留下隐形实体。
+阿努赫模型已将 1.5 倍尺寸烘焙进几何并合并为单一总根骨，请同时替换模型和 YknBoss 插件。

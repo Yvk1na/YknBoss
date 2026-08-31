@@ -1,0 +1,37 @@
+abilities:
+  yknboss/hunting_instinct:
+    enabled: true
+    base_value: 0.4
+    value_per_level: 0.4
+    unlock: 1
+    level_up: 5
+    max_level: 20
+  yknboss/boss_resistance:
+    enabled: true
+    base_value: 0.5
+    value_per_level: 0.5
+    unlock: 2
+    level_up: 5
+    max_level: 20
+  yknboss/last_stand:
+    enabled: true
+    base_value: 0.6
+    value_per_level: 0.6
+    unlock: 3
+    level_up: 5
+    max_level: 20
+  yknboss/regroup:
+    enabled: true
+    base_value: 0.2
+    value_per_level: 0.2
+    unlock: 4
+    level_up: 5
+    max_level: 20
+  yknboss/final_insight:
+    enabled: true
+    base_value: 0.4
+    value_per_level: 0.4
+    unlock: 5
+    level_up: 5
+    max_level: 20
+file_version: 1
