@@ -92,11 +92,24 @@ public final class EndsunGuardArenaManager {
     }
 
     private String instanceWorldName(int slot) {
-        return settings.worldName() + "_" + String.format("%02d", slot);
+        return ArenaWorldStorage.instanceWorldName(settings.worldName(), slot);
+    }
+
+    private String legacyInstanceWorldName(int slot) {
+        return ArenaWorldStorage.legacyInstanceWorldName(settings.worldName(), slot);
     }
 
     public void createAll() {
         for (ArenaInstance instance : instances) createOrLoad(instance);
+    }
+
+    public void migrateLegacyWorlds() {
+        if (!settings.enabled()) return;
+        WorldManager manager = multiverseWorldManager();
+        for (ArenaInstance instance : instances) {
+            ArenaWorldStorage.prepareInstance(manager, plugin.getLogger(), instance.worldName,
+                    legacyInstanceWorldName(instance.slot), "烬日冥卫");
+        }
     }
 
     public World createOrLoad() {
@@ -106,6 +119,8 @@ public final class EndsunGuardArenaManager {
     private World createOrLoad(ArenaInstance instance) {
         if (!settings.enabled()) throw new IllegalStateException("烬日冥卫竞技场已在配置中禁用");
         WorldManager manager = multiverseWorldManager();
+        ArenaWorldStorage.prepareInstance(manager, plugin.getLogger(), instance.worldName,
+                legacyInstanceWorldName(instance.slot), "烬日冥卫");
         LoadedMultiverseWorld multiverseWorld = manager.getLoadedWorld(instance.worldName).getOrNull();
         boolean createdNow = false;
 

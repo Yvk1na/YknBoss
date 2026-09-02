@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "cn.yknboss"
-version = "2.0.6"
+version = "2.0.8"
 val pluginVersion = version.toString()
 
 repositories {

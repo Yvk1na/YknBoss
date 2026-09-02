@@ -1,4 +1,7 @@
-config-version: 46
+config-version: 48
+
+# 三种 Boss 的所有副本实例统一存放在服务端 bossmap 文件夹中。
+# world-name 仍作为各 Boss 实例的名称前缀，例如 bossmap/bone_dragon_arena_01。
 
 bone-dragon-arena:
   enabled: true
@@ -810,7 +813,6 @@ messages:
       death-fallback: "&b骨龙的魂火熄灭了。"
     endsun-guard:
       bossbar: "{name} &8[{phase}] &e盾 {shield} &5蚀 {eclipse}"
-      eclipse-meter: "&6日蚀刻度 &f{value}&7/&f{max}"
       scythe-return: "&5&l冥镰回斩！&d镰刃将沿原路径返回。"
       soul-fracture: "&5魂裂：&d你的灵魂被回程镰刃撕裂。"
       judgement-lock: "&d&l紫晶审判锁定了 {player}！&7其他玩家潜行可制造阴影区。"

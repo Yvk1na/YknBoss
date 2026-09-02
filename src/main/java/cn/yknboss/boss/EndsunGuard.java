@@ -257,7 +257,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         this.battlefieldCenter = controller.getLocation().clone();
         this.bossBar = Bukkit.createBossBar(
                 legacyString(plugin.endsunGuardSettings().displayName()),
-                BarColor.YELLOW, BarStyle.SOLID);
+                BarColor.RED, BarStyle.SOLID);
         bossBar.setVisible(true);
         applySettings(true);
         persistPhase();
@@ -875,7 +875,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
                 legacyString(plugin.messages().raw(barKey,
                         "health", Math.round(body.healthRemaining),
                         "max", Math.round(bodyHealth))),
-                type == TwinType.SUN ? BarColor.YELLOW : BarColor.PURPLE,
+                type == TwinType.SUN ? BarColor.RED : BarColor.PURPLE,
                 BarStyle.SEGMENTED_10);
         body.healthBar.setVisible(true);
         body.model = plugin.betterModel().attachStable(settings.modelId(), body.entity,
@@ -2690,12 +2690,6 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         EndsunGuardSettings.Eclipse settings = plugin.endsunGuardSettings().eclipse();
         if (settings.passiveDecayPerSecond() > 0.0 && age % 20L == 0L) {
             eclipseValues.replaceAll((id, value) -> Math.max(0.0, value - settings.passiveDecayPerSecond()));
-        }
-        if (age % 10L != 0L) return;
-        for (Player player : combatPlayers()) {
-            double value = eclipseValues.getOrDefault(player.getUniqueId(), 0.0);
-            player.sendActionBar(plugin.messages().component("boss.endsun-guard.eclipse-meter",
-                    "value", Math.round(value), "max", Math.round(settings.maximum())));
         }
     }
 

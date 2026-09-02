@@ -1,6 +1,6 @@
 # YknBoss
 
-面向 Paper 1.21.10 及以上版本的 Minecraft RPG Boss 插件，使用 Java 25。当前包含“骨龙”和“烬日冥卫·阿努赫”。
+面向 Paper 1.21.10 及以上版本的 Minecraft RPG Boss 插件，使用 Java 25。当前包含“骨龙”、“烬日冥卫·阿努赫”和“终焉之魔女·伊芙蕾雅”。
 
 ## 烬日冥卫·阿努赫
 
@@ -30,7 +30,8 @@
 
 ## 多人 Boss 副本
 
-- 必须安装 Multiverse-Core 5.7.3+；骨龙和阿努赫分别拥有 10 个半径 100 格的普通虚空世界，可供不同队伍同时战斗。
+- 必须安装 Multiverse-Core 5.7.3+；骨龙、阿努赫和伊芙蕾雅分别拥有 10 个半径 100 格的普通虚空世界，可供不同队伍同时战斗。
+- 三种 Boss 的实例世界统一存放在服务端 `bossmap/` 目录，例如 `bossmap/bone_dragon_arena_01`；旧版平铺世界会在插件启动时安全迁移，世界内有玩家时不会移动。
 - 每队默认最多 10 人（可配置）；队长使用 `/yknboss enter bone_dragon` 或 `/yknboss enter endsun_guard` 分配空闲实例并传送在线成员，队员可用同一指令重新进入本队实例。
 - `/p invite <玩家ID>` 会在邀请者没有队伍时自动创建队伍；邀请有效期为 60 秒，60 秒内不能再次邀请同一名玩家。
 - 队员死亡后等待 10 秒复活；提前点击重生会进入旁观等待。全队都在等待复活时立即挑战失败并返程重置。
@@ -56,10 +57,10 @@ $env:JAVA_HOME = 'C:\java\25'
 
 产物：
 
-- `build/libs/YknBoss-1.28.5-obfuscated.jar`
-- `build/distributions/YknBoss-BetterModel-Pack-1.28.5.zip`
-- `build/distributions/YknBoss-CraftEngine-Pack-1.28.5.zip`
-- `build/distributions/YknBoss-ItemsAdder-Pack-1.28.5.zip`
+- `build/libs/YknBoss-2.0.8-obfuscated.jar`
+- `build/distributions/YknBoss-BetterModel-Pack-2.0.8.zip`
+- `build/distributions/YknBoss-CraftEngine-Pack-2.0.8.zip`
+- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.8.zip`
 
 服务端也需要使用 Java 25 启动。
 
@@ -82,7 +83,7 @@ CraftEngine 和 ItemsAdder 都是软依赖，不需要同时安装；目前仅�
 ### BetterModel（骨龙与烬日冥卫必需）
 
 1. 将用户提供的 `bettermodel-3.4.1-paper.jar` 放入服务端 `plugins/`。
-2. 解压 `YknBoss-BetterModel-Pack-1.28.5.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
+2. 解压 `YknBoss-BetterModel-Pack-2.0.8.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
 3. 启动服务器，或执行 `/bettermodel reload`。
 4. 执行 `/yknboss spawn bone_dragon`。
 

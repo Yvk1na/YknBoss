@@ -1,5 +1,6 @@
 package cn.yknboss;
 
+import cn.yknboss.arena.ArenaWorldStorage;
 import cn.yknboss.arena.BoneDragonArenaManager;
 import cn.yknboss.arena.BoneDragonArenaSettings;
 import cn.yknboss.arena.EndsunGuardArenaManager;
@@ -98,6 +99,8 @@ public final class YknBossPlugin extends JavaPlugin {
         arenaManager = new BoneDragonArenaManager(this, arenaSettings);
         endsunArenaManager = new EndsunGuardArenaManager(this, endsunArenaSettings);
         endWitchArenaManager = new EndWitchArenaManager(this, endWitchArenaSettings);
+        ArenaWorldStorage.ensureRootDirectory();
+        migrateLegacyArenaWorlds();
         specialItemManager = new SpecialItemManager(this);
         slayerService = SlayerService.create(this);
 
@@ -278,6 +281,24 @@ public final class YknBossPlugin extends JavaPlugin {
         return added;
     }
 
+    private void migrateLegacyArenaWorlds() {
+        try {
+            arenaManager.migrateLegacyWorlds();
+        } catch (RuntimeException exception) {
+            getLogger().severe("迁移旧骨龙副本到 bossmap 失败: " + exception.getMessage());
+        }
+        try {
+            endsunArenaManager.migrateLegacyWorlds();
+        } catch (RuntimeException exception) {
+            getLogger().severe("迁移旧阿努赫副本到 bossmap 失败: " + exception.getMessage());
+        }
+        try {
+            endWitchArenaManager.migrateLegacyWorlds();
+        } catch (RuntimeException exception) {
+            getLogger().severe("迁移旧伊芙蕾雅副本到 bossmap 失败: " + exception.getMessage());
+        }
+    }
+
     private boolean migrateLegacyConfig() {
         int version = getConfig().contains("config-version", true)
                 ? getConfig().getInt("config-version") : 1;
@@ -377,7 +398,7 @@ public final class YknBossPlugin extends JavaPlugin {
             if (!getConfig().isSet(spikesRoot + "spikes-per-ring")) getConfig().set(spikesRoot + "spikes-per-ring", 18);
             if (!getConfig().isSet(spikesRoot + "hit-radius")) getConfig().set(spikesRoot + "hit-radius", 1.75);
         }
-        if (version >= 46) return false;
+        if (version >= 48) return false;
         if (version < 23) {
             String absorbRoot = "bone-dragon.abilities.skeleton-absorb.";
             if (!getConfig().isSet(absorbRoot + "max-damage-increase-percent")) {
@@ -619,8 +640,9 @@ public final class YknBossPlugin extends JavaPlugin {
             getConfig().set("messages.boss.end-witch.bossbar-status",
                     " &2蚀痕 &f{mark}&7/3 &5终焉刻度 &f{gauge}&7/&f{max}");
         }
-        getConfig().set("config-version", 46);
-        getLogger().info("Boss 配置已迁移至 v46（伊芙蕾雅玩家专属蚀痕与终焉刻度血条）。");
+        if (version < 48) getConfig().set("messages.boss.endsun-guard.eclipse-meter", null);
+        getConfig().set("config-version", 48);
+        getLogger().info("Boss 配置已迁移至 v48（移除物品栏上方的阿努赫日蚀刻度提示）。");
         return true;
     }
 
