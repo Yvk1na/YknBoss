@@ -8,6 +8,7 @@ public record EndsunGuardSettings(
         double attackDamage, double armor, double movementSpeed, double attackSpeedMultiplier,
         double followRange, double knockbackResistance,
         double bossbarRange, int experience, String modelId, float modelScale,
+        int playerHitCooldownTicks,
         Eclipse eclipse, Scythe scythe, Judgement judgement, Crown crown,
         Shield shield, Furnace furnace, Phases phases, Ultimate ultimate,
         SandFuneral sandFuneral, ScytheEcho scytheEcho, NetherBoundary netherBoundary,
@@ -82,11 +83,11 @@ public record EndsunGuardSettings(
         if (root == null) throw new IllegalArgumentException("缺少 endsun-guard 配置段");
         return new EndsunGuardSettings(
                 root.getString("display-name", "&6&l烬日冥卫·阿努赫"),
-                between(root.getDouble("phases.p1-health", 409.6), 1.0, BossHealthLimits.MAXIMUM, "phases.p1-health"),
-                between(root.getDouble("phases.p2-health", 307.2), 1.0, BossHealthLimits.MAXIMUM, "phases.p2-health"),
-                between(root.getDouble("phases.p3-health", 307.2), 1.0, BossHealthLimits.MAXIMUM, "phases.p3-health"),
-                between(root.getDouble("attack-damage", 26.0), 0.0, 2048.0, "attack-damage"),
-                between(root.getDouble("armor", 22.0), 0.0, BossAttributeLimits.MAX_ARMOR, "armor"),
+                between(root.getDouble("phases.p1-health", 38_061.0), 1.0, BossHealthLimits.MAXIMUM, "phases.p1-health"),
+                between(root.getDouble("phases.p2-health", 33_832.0), 1.0, BossHealthLimits.MAXIMUM, "phases.p2-health"),
+                between(root.getDouble("phases.p3-health", 29_603.0), 1.0, BossHealthLimits.MAXIMUM, "phases.p3-health"),
+                between(root.getDouble("attack-damage", 400.0), 0.0, 2048.0, "attack-damage"),
+                between(root.getDouble("armor", 24.0), 0.0, BossAttributeLimits.MAX_ARMOR, "armor"),
                 between(root.getDouble("movement-speed", 0.32), 0.01, 1.0, "movement-speed"),
                 between(root.getDouble("attack-speed-multiplier", 1.2), 0.1, 5.0, "attack-speed-multiplier"),
                 between(root.getDouble("follow-range", 48.0), 1.0, 2048.0, "follow-range"),
@@ -95,6 +96,7 @@ public record EndsunGuardSettings(
                 Math.max(0, root.getInt("experience", 0)),
                 root.getString("model.id", "endsun_anuhe"),
                 (float) between(root.getDouble("model.scale", 1.5), 0.1, 4.0, "model.scale"),
+                Math.max(1, Math.min(40, root.getInt("damage-intake.player-hit-cooldown-ticks", 10))),
                 new Eclipse(
                         positive(root.getDouble("eclipse.maximum", 100.0), "eclipse.maximum"),
                         nonNegative(root.getDouble("eclipse.fire-gain-per-damage", 2.5), "eclipse.fire-gain-per-damage"),
@@ -112,15 +114,15 @@ public record EndsunGuardSettings(
                         seconds(root.getDouble("abilities.scythe-return.outward-seconds", 0.9)),
                         seconds(root.getDouble("abilities.scythe-return.return-delay-seconds", 0.6)),
                         seconds(root.getDouble("abilities.scythe-return.return-seconds", 0.75)),
-                        nonNegative(root.getDouble("abilities.scythe-return.outward-damage", 18.0), "abilities.scythe-return.outward-damage"),
-                        nonNegative(root.getDouble("abilities.scythe-return.return-damage", 36.0), "abilities.scythe-return.return-damage"),
+                        nonNegative(root.getDouble("abilities.scythe-return.outward-damage", 350.0), "abilities.scythe-return.outward-damage"),
+                        nonNegative(root.getDouble("abilities.scythe-return.return-damage", 700.0), "abilities.scythe-return.return-damage"),
                         nonNegative(root.getDouble("abilities.scythe-return.knockback", 1.35), "abilities.scythe-return.knockback"),
                         seconds(root.getDouble("abilities.scythe-return.soul-fracture-seconds", 6.0))
                 ),
                 new Judgement(
                         seconds(root.getDouble("abilities.amethyst-judgement.cooldown-seconds", 14.0)),
                         seconds(root.getDouble("abilities.amethyst-judgement.telegraph-seconds", 3.0)),
-                        nonNegative(root.getDouble("abilities.amethyst-judgement.damage", 34.0), "abilities.amethyst-judgement.damage"),
+                        nonNegative(root.getDouble("abilities.amethyst-judgement.damage", 900.0), "abilities.amethyst-judgement.damage"),
                         nonNegative(root.getDouble("abilities.amethyst-judgement.maximum-eclipse-bonus-percent", 100.0),
                                 "abilities.amethyst-judgement.maximum-eclipse-bonus-percent") / 100.0,
                         positive(root.getDouble("abilities.amethyst-judgement.shadow-radius", 3.0),
@@ -132,9 +134,9 @@ public record EndsunGuardSettings(
                         Math.max(1, root.getInt("abilities.soul-crown.flame-count", 6)),
                         positive(root.getDouble("abilities.soul-crown.flame-speed", 0.14), "abilities.soul-crown.flame-speed"),
                         positive(root.getDouble("abilities.soul-crown.flame-hit-radius", 1.4), "abilities.soul-crown.flame-hit-radius"),
-                        nonNegative(root.getDouble("abilities.soul-crown.flame-damage", 8.0), "abilities.soul-crown.flame-damage"),
+                        nonNegative(root.getDouble("abilities.soul-crown.flame-damage", 160.0), "abilities.soul-crown.flame-damage"),
                         Math.max(0, root.getInt("abilities.soul-crown.fire-ticks", 80)),
-                        nonNegative(root.getDouble("abilities.soul-crown.shield-heal-on-burning-hit", 20.0),
+                        nonNegative(root.getDouble("abilities.soul-crown.shield-heal-on-burning-hit", 97.0),
                                 "abilities.soul-crown.shield-heal-on-burning-hit"),
                         Math.max(1, root.getInt("abilities.soul-crown.totem-count", 3)),
                         Math.max(1, root.getInt("abilities.soul-crown.totem-hits", 3))
@@ -142,7 +144,7 @@ public record EndsunGuardSettings(
                 new Shield(
                         seconds(root.getDouble("abilities.solar-shield.cooldown-seconds", 12.0)),
                         seconds(root.getDouble("abilities.solar-shield.duration-seconds", 6.0)),
-                        positive(root.getDouble("abilities.solar-shield.maximum-energy", 200.0), "abilities.solar-shield.maximum-energy"),
+                        positive(root.getDouble("abilities.solar-shield.maximum-energy", 1_208.0), "abilities.solar-shield.maximum-energy"),
                         between(root.getDouble("abilities.solar-shield.minimum-cast-energy-percent", 35.0), 0.0, 100.0,
                                 "abilities.solar-shield.minimum-cast-energy-percent") / 100.0,
                         between(root.getDouble("abilities.solar-shield.front-dot-threshold", 0.15), -1.0, 1.0,
@@ -156,7 +158,7 @@ public record EndsunGuardSettings(
                 new Furnace(
                         seconds(root.getDouble("abilities.heart-furnace.reflection-spawn-interval-seconds", 12.0)),
                         Math.max(1, root.getInt("abilities.heart-furnace.maximum-reflections", 10)),
-                        positive(root.getDouble("abilities.heart-furnace.reflection-health", 24.0), "abilities.heart-furnace.reflection-health"),
+                        positive(root.getDouble("abilities.heart-furnace.reflection-health", 725.0), "abilities.heart-furnace.reflection-health"),
                         seconds(root.getDouble("abilities.heart-furnace.drain-cooldown-seconds", 15.0)),
                         seconds(root.getDouble("abilities.heart-furnace.drain-channel-seconds", 2.2)),
                         positive(root.getDouble("abilities.heart-furnace.consume-range", 32.0), "abilities.heart-furnace.consume-range"),
@@ -164,7 +166,7 @@ public record EndsunGuardSettings(
                                 "abilities.heart-furnace.damage-increase-percent-per-soul") / 100.0,
                         nonNegative(root.getDouble("abilities.heart-furnace.maximum-damage-increase-percent", 50.0),
                                 "abilities.heart-furnace.maximum-damage-increase-percent") / 100.0,
-                        nonNegative(root.getDouble("abilities.heart-furnace.shield-restore-per-soul", 25.0),
+                        nonNegative(root.getDouble("abilities.heart-furnace.shield-restore-per-soul", 12.0),
                                 "abilities.heart-furnace.shield-restore-per-soul")
                 ),
                 new Phases(
@@ -183,12 +185,12 @@ public record EndsunGuardSettings(
                         seconds(root.getDouble("abilities.black-sun.duration-seconds", 15.0)),
                         positive(root.getDouble("abilities.black-sun.start-radius", 30.0), "abilities.black-sun.start-radius"),
                         positive(root.getDouble("abilities.black-sun.end-radius", 4.0), "abilities.black-sun.end-radius"),
-                        nonNegative(root.getDouble("abilities.black-sun.collapse-damage", 12.0), "abilities.black-sun.collapse-damage"),
+                        nonNegative(root.getDouble("abilities.black-sun.collapse-damage", 500.0), "abilities.black-sun.collapse-damage"),
                         nonNegative(root.getDouble("abilities.black-sun.execution-damage", 1000.0), "abilities.black-sun.execution-damage"),
                         Math.max(1, root.getInt("abilities.black-sun.fragment-count", 9)),
-                        Math.max(1, root.getInt("abilities.black-sun.fragment-cost", 3)),
+                        Math.max(1, root.getInt("abilities.black-sun.fragment-cost", 6)),
                         positive(root.getDouble("abilities.black-sun.barrier-radius", 3.5), "abilities.black-sun.barrier-radius"),
-                        positive(root.getDouble("abilities.black-sun.furnace-health", 160.0), "abilities.black-sun.furnace-health")
+                        positive(root.getDouble("abilities.black-sun.furnace-health", 967.0), "abilities.black-sun.furnace-health")
                 ),
                 new SandFuneral(
                         seconds(root.getDouble("abilities.sand-funeral.cooldown-seconds", 20.0)),
@@ -199,7 +201,7 @@ public record EndsunGuardSettings(
                                 10.0, 160.0, "abilities.sand-funeral.gap-width-degrees")),
                         positive(root.getDouble("abilities.sand-funeral.hit-radius", 1.8), "abilities.sand-funeral.hit-radius"),
                         seconds(root.getDouble("abilities.sand-funeral.damage-interval-seconds", 0.7)),
-                        nonNegative(root.getDouble("abilities.sand-funeral.damage", 8.0), "abilities.sand-funeral.damage"),
+                        nonNegative(root.getDouble("abilities.sand-funeral.damage", 120.0), "abilities.sand-funeral.damage"),
                         Math.max(1, root.getInt("abilities.sand-funeral.suffocation-per-hit", 1)),
                         Math.max(1, root.getInt("abilities.sand-funeral.maximum-suffocation", 8))
                 ),
@@ -210,7 +212,7 @@ public record EndsunGuardSettings(
                         seconds(root.getDouble("abilities.scythe-echo.replay-delay-seconds", 2.5)),
                         positive(root.getDouble("abilities.scythe-echo.slash-range", 8.0), "abilities.scythe-echo.slash-range"),
                         positive(root.getDouble("abilities.scythe-echo.hit-radius", 2.0), "abilities.scythe-echo.hit-radius"),
-                        nonNegative(root.getDouble("abilities.scythe-echo.damage", 24.0), "abilities.scythe-echo.damage")
+                        nonNegative(root.getDouble("abilities.scythe-echo.damage", 550.0), "abilities.scythe-echo.damage")
                 ),
                 new NetherBoundary(
                         seconds(root.getDouble("abilities.nether-boundary.cooldown-seconds", 16.0)),
@@ -218,38 +220,38 @@ public record EndsunGuardSettings(
                         seconds(root.getDouble("abilities.nether-boundary.duration-seconds", 10.0)),
                         seconds(root.getDouble("abilities.nether-boundary.return-delay-seconds", 3.0)),
                         positive(root.getDouble("abilities.nether-boundary.half-length", 24.0), "abilities.nether-boundary.half-length"),
-                        nonNegative(root.getDouble("abilities.nether-boundary.return-damage", 12.0), "abilities.nether-boundary.return-damage")
+                        nonNegative(root.getDouble("abilities.nether-boundary.return-damage", 300.0), "abilities.nether-boundary.return-damage")
                 ),
                 new Sunfall(
                         seconds(root.getDouble("abilities.sunfall.cooldown-seconds", 24.0)),
                         seconds(root.getDouble("abilities.sunfall.telegraph-seconds", 2.5)),
                         Math.max(1, Math.min(12, root.getInt("abilities.sunfall.wheel-count", 5))),
                         seconds(root.getDouble("abilities.sunfall.duration-seconds", 14.0)),
-                        nonNegative(root.getDouble("abilities.sunfall.impact-damage", 22.0), "abilities.sunfall.impact-damage"),
+                        nonNegative(root.getDouble("abilities.sunfall.impact-damage", 550.0), "abilities.sunfall.impact-damage"),
                         positive(root.getDouble("abilities.sunfall.radiation-radius", 4.5), "abilities.sunfall.radiation-radius"),
-                        nonNegative(root.getDouble("abilities.sunfall.radiation-damage", 5.0), "abilities.sunfall.radiation-damage"),
+                        nonNegative(root.getDouble("abilities.sunfall.radiation-damage", 100.0), "abilities.sunfall.radiation-damage"),
                         seconds(root.getDouble("abilities.sunfall.radiation-interval-seconds", 1.0)),
-                        nonNegative(root.getDouble("abilities.sunfall.armor-break-damage", 45.0), "abilities.sunfall.armor-break-damage")
+                        nonNegative(root.getDouble("abilities.sunfall.armor-break-damage", 1_208.0), "abilities.sunfall.armor-break-damage")
                 ),
                 new Edict(
                         seconds(root.getDouble("abilities.pharaoh-edict.cooldown-seconds", 26.0)),
                         seconds(root.getDouble("abilities.pharaoh-edict.telegraph-seconds", 2.0)),
                         seconds(root.getDouble("abilities.pharaoh-edict.duration-seconds", 12.0)),
                         Math.max(2, root.getInt("abilities.pharaoh-edict.weapon-hit-threshold", 3)),
-                        nonNegative(root.getDouble("abilities.pharaoh-edict.reflect-damage", 10.0), "abilities.pharaoh-edict.reflect-damage"),
+                        nonNegative(root.getDouble("abilities.pharaoh-edict.reflect-damage", 250.0), "abilities.pharaoh-edict.reflect-damage"),
                         seconds(root.getDouble("abilities.pharaoh-edict.movement-threshold-seconds", 2.5)),
-                        nonNegative(root.getDouble("abilities.pharaoh-edict.movement-damage", 16.0), "abilities.pharaoh-edict.movement-damage"),
+                        nonNegative(root.getDouble("abilities.pharaoh-edict.movement-damage", 550.0), "abilities.pharaoh-edict.movement-damage"),
                         between(root.getDouble("abilities.pharaoh-edict.gaze-dot-threshold", 0.92), 0.0, 1.0,
                                 "abilities.pharaoh-edict.gaze-dot-threshold"),
                         seconds(root.getDouble("abilities.pharaoh-edict.gaze-threshold-seconds", 2.0)),
-                        nonNegative(root.getDouble("abilities.pharaoh-edict.petrify-damage", 18.0), "abilities.pharaoh-edict.petrify-damage"),
+                        nonNegative(root.getDouble("abilities.pharaoh-edict.petrify-damage", 600.0), "abilities.pharaoh-edict.petrify-damage"),
                         positive(root.getDouble("abilities.pharaoh-edict.group-radius", 3.5), "abilities.pharaoh-edict.group-radius"),
-                        nonNegative(root.getDouble("abilities.pharaoh-edict.group-damage", 14.0), "abilities.pharaoh-edict.group-damage"),
+                        nonNegative(root.getDouble("abilities.pharaoh-edict.group-damage", 400.0), "abilities.pharaoh-edict.group-damage"),
                         seconds(root.getDouble("abilities.pharaoh-edict.trigger-cooldown-seconds", 2.0))
                 ),
                 new Twins(
                         seconds(root.getDouble("abilities.twin-eclipse.cooldown-seconds", 50.0)),
-                        between(root.getDouble("abilities.twin-eclipse.body-health", 180.0), 1.0, BossHealthLimits.MAXIMUM,
+                        between(root.getDouble("abilities.twin-eclipse.body-health", 1_450.0), 1.0, BossHealthLimits.MAXIMUM,
                                 "abilities.twin-eclipse.body-health"),
                         seconds(root.getDouble("abilities.twin-eclipse.revival-window-seconds", 20.0)),
                         between(root.getDouble("abilities.twin-eclipse.success-damage-percent", 15.0), 0.0, 100.0,

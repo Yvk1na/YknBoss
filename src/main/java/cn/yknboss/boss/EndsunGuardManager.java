@@ -141,6 +141,24 @@ public final class EndsunGuardManager {
         if (boss != null) boss.handleAttack(event);
     }
 
+    public boolean rejectRateLimitedPlayerDamage(EntityDamageByEntityEvent event) {
+        EndsunGuard controllerBoss = bosses.get(event.getEntity().getUniqueId());
+        if (controllerBoss != null) return controllerBoss.rejectRateLimitedPlayerDamage(event);
+        for (EndsunGuard boss : bosses.values()) {
+            if (boss.rejectRateLimitedPlayerDamage(event)) return true;
+        }
+        return false;
+    }
+
+    public void clearPlayerDamageApproval(EntityDamageEvent event) {
+        EndsunGuard controllerBoss = bosses.get(event.getEntity().getUniqueId());
+        if (controllerBoss != null) {
+            controllerBoss.clearPlayerDamageApproval(event);
+            return;
+        }
+        for (EndsunGuard boss : bosses.values()) boss.clearPlayerDamageApproval(event);
+    }
+
     public boolean handleIncomingDamage(EntityDamageEvent event) {
         EndsunGuard boss = bosses.get(event.getEntity().getUniqueId());
         return boss != null && boss.handleIncomingDamage(event);

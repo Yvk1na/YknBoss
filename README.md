@@ -39,6 +39,7 @@
 - 场地内禁止玩家放置、破坏、点燃方块和使用桶，爆炸、活塞及实体也无法改变场地。
 - 右键中央不可破坏的对应 Boss 祭坛开始召唤。Boss 死亡 30 秒后队员返回原位置；实例在下一支队伍进入前以固定种子单独重置。
 - `/yknboss arena reset` 可在场内无人时手动重置副本。
+- Boss 显式技能仍经过 YknRpg 防御、AuraSkills 韧性/盾御/免疫、讨伐抗性、职业减伤和原版护甲，但不会再误触发仅面向普通怪物的 `Mob Master` 减伤；普通攻击和召唤物攻击不受此规则影响。
 
 ## 特殊物品
 
@@ -57,10 +58,10 @@ $env:JAVA_HOME = 'C:\java\25'
 
 产物：
 
-- `build/libs/YknBoss-2.0.8-obfuscated.jar`
-- `build/distributions/YknBoss-BetterModel-Pack-2.0.8.zip`
-- `build/distributions/YknBoss-CraftEngine-Pack-2.0.8.zip`
-- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.8.zip`
+- `build/libs/YknBoss-2.0.14-obfuscated.jar`
+- `build/distributions/YknBoss-BetterModel-Pack-2.0.14.zip`
+- `build/distributions/YknBoss-CraftEngine-Pack-2.0.14.zip`
+- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.14.zip`
 
 服务端也需要使用 Java 25 启动。
 
@@ -83,7 +84,7 @@ CraftEngine 和 ItemsAdder 都是软依赖，不需要同时安装；目前仅�
 ### BetterModel（骨龙与烬日冥卫必需）
 
 1. 将用户提供的 `bettermodel-3.4.1-paper.jar` 放入服务端 `plugins/`。
-2. 解压 `YknBoss-BetterModel-Pack-2.0.8.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
+2. 解压 `YknBoss-BetterModel-Pack-2.0.14.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
 3. 启动服务器，或执行 `/bettermodel reload`。
 4. 执行 `/yknboss spawn bone_dragon`。
 

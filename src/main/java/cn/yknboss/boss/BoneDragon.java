@@ -44,9 +44,11 @@ import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -87,6 +89,10 @@ public final class BoneDragon implements ScriptedBossLifecycle {
     private final Set<UUID> deathRulers = new HashSet<>();
     private final Map<UUID, Long> deathRulerNextHealAt = new HashMap<>();
     private final Map<UUID, Double> damageThreat = new HashMap<>();
+    private final Map<UUID, Long> nextAcceptedPlayerHit = new HashMap<>();
+    private final Map<UUID, Map<UUID, Long>> nextAcceptedMinionPlayerHits = new HashMap<>();
+    private final Set<EntityDamageEvent> preApprovedPlayerDamageEvents =
+            Collections.newSetFromMap(new IdentityHashMap<>());
     private final List<UUID> absorbTargets = new ArrayList<>();
     private final List<Meteor> meteors = new ArrayList<>();
     private final List<TrackingSkull> trackingSkulls = new ArrayList<>();
@@ -111,6 +117,7 @@ public final class BoneDragon implements ScriptedBossLifecycle {
     private double entranceTargetY;
     private float entranceBaseYaw;
     private long skillStartedAt;
+    private long nextSkillAt;
     private long grabCapturedAt;
     private long deathStartedAt;
     private boolean dying;
@@ -136,6 +143,8 @@ public final class BoneDragon implements ScriptedBossLifecycle {
     private long p3SummonCooldown;
     private long phaseHealthLockUntil;
     private long nextHitFeedbackAt;
+    private final SkillRotation<Skill> skillRotation = new SkillRotation<>(
+            2, ThreadLocalRandom.current().nextInt());
     private boolean bossBarRefreshQueued;
     // Authoritative health for the current phase. The Bukkit entity is only the
     // carrier because model/level plugins may rewrite its health attributes.
@@ -224,6 +233,8 @@ public final class BoneDragon implements ScriptedBossLifecycle {
         entity.setCanPickupItems(false);
         entity.setRemoveWhenFarAway(false);
         entity.setPersistent(true);
+        entity.setMaximumNoDamageTicks(0);
+        entity.setNoDamageTicks(0);
         entity.getEquipment().clear();
         entity.getPersistentDataContainer().set(
                 plugin.bossTypeKey(), PersistentDataType.STRING, BoneDragonManager.TYPE_ID);
@@ -296,6 +307,8 @@ public final class BoneDragon implements ScriptedBossLifecycle {
                     PersistentDataType.INTEGER, deathSummonMask);
         });
         controller = replacement;
+        nextAcceptedPlayerHit.clear();
+        preApprovedPlayerDamageEvents.clear();
         skillDamageSource = DamageSource.builder(DamageType.MOB_ATTACK)
                 .withCausingEntity(replacement)
                 .withDirectEntity(replacement)
@@ -369,7 +382,7 @@ public final class BoneDragon implements ScriptedBossLifecycle {
             if (phase == Phase.P1) tickNormalFlight(target);
             else tickGroundMovement(target);
             tryNormalAttack(target);
-            tryBeginSkill(target);
+            if (age >= nextSkillAt) tryBeginSkill(target);
         } else {
             tickSkill(target);
         }
@@ -389,6 +402,8 @@ public final class BoneDragon implements ScriptedBossLifecycle {
         controller.setGravity(false);
         controller.setInvulnerable(dying || skill == Skill.WING_BREAK || phaseHealthLockUntil > age);
         controller.setInvisible(true);
+        controller.setMaximumNoDamageTicks(0);
+        controller.setNoDamageTicks(0);
         controller.customName(legacyComponent(settings.displayName()));
         controller.setCustomNameVisible(false);
         setCurrentPhaseHealth(Math.max(1.0, Math.min(phaseMaximum, phaseMaximum * fraction)));
@@ -630,58 +645,104 @@ public final class BoneDragon implements ScriptedBossLifecycle {
         if (target == null) return;
         BoneDragonSettings settings = plugin.boneDragonSettings();
         double distanceSquared = target.getLocation().distanceSquared(controller.getLocation());
+        double horizontalDistanceSquared = horizontalDistanceSquared(
+                target.getLocation(), controller.getLocation());
         if (phase == Phase.P1) {
-            double horizontal = horizontalDistanceSquared(target.getLocation(), controller.getLocation());
-            double grabStartRange = Math.max(32.0, settings.orbitRadius() + 12.0);
-            if (grabCooldown <= 0 && horizontal <= grabStartRange * grabStartRange) {
+            Skill selected = skillRotation.choose(List.of(
+                            Skill.GRAB, Skill.SKULL_BARRAGE, Skill.FIRE_BREATH,
+                            Skill.SUMMON, Skill.METEOR),
+                    candidate -> skillReady(candidate, settings, distanceSquared,
+                            horizontalDistanceSquared));
+            if (selected != null) beginSelectedSkill(selected, target, settings);
+            else nextSkillAt = age + skillTimingTicks("retry-delay-seconds", 0.5);
+            return;
+        }
+
+        if (phase == Phase.P3 && p3SummonCooldown <= 0 && summonCooldown <= 0
+                && !skillRotation.recentlyUsed(Skill.SUMMON)) {
+            skillRotation.remember(Skill.SUMMON);
+            beginSelectedSkill(Skill.SUMMON, target, settings);
+            p3SummonCooldown = settings.p3SummonIntervalTicks();
+            return;
+        }
+        Skill selected = skillRotation.choose(List.of(
+                        Skill.SUMMON, Skill.BONE_PRISON, Skill.BONE_SPIKES,
+                        Skill.GROUND_CHARGE, Skill.FIRE_BREATH, Skill.TAIL_SWEEP),
+                candidate -> skillReady(candidate, settings, distanceSquared,
+                        horizontalDistanceSquared));
+        if (selected != null) beginSelectedSkill(selected, target, settings);
+        else nextSkillAt = age + skillTimingTicks("retry-delay-seconds", 0.5);
+    }
+
+    private boolean skillReady(Skill candidate, BoneDragonSettings settings,
+                               double distanceSquared, double horizontalDistanceSquared) {
+        return switch (candidate) {
+            case GRAB -> {
+                double range = Math.max(32.0, settings.orbitRadius() + 12.0);
+                yield grabCooldown <= 0 && horizontalDistanceSquared <= range * range;
+            }
+            case SKULL_BARRAGE -> skullCooldown <= 0;
+            case FIRE_BREATH -> breathCooldown <= 0
+                    && distanceSquared <= settings.breathRange() * settings.breathRange();
+            case SUMMON -> summonCooldown <= 0;
+            case METEOR -> meteorCooldown <= 0;
+            case BONE_PRISON -> prisonCooldown <= 0;
+            case BONE_SPIKES -> boneSpikesCooldown <= 0;
+            case GROUND_CHARGE -> chargeCooldown <= 0;
+            case TAIL_SWEEP -> tailCooldown <= 0
+                    && distanceSquared <= settings.tailRange() * settings.tailRange();
+            default -> false;
+        };
+    }
+
+    private void beginSelectedSkill(Skill selected, Player target, BoneDragonSettings settings) {
+        switch (selected) {
+            case GRAB -> {
                 beginSkill(Skill.GRAB, "dive_grab");
                 grabCooldown = settings.grabCooldownTicks();
                 grabStartY = controller.getY();
                 grabCapturedAt = 0L;
-            } else if (skullCooldown <= 0) {
+            }
+            case SKULL_BARRAGE -> {
                 beginSkill(Skill.SKULL_BARRAGE, "skull_barrage");
                 skullCooldown = settings.skullCooldownTicks();
-            } else if (breathCooldown <= 0 && distanceSquared <= settings.breathRange() * settings.breathRange()) {
+            }
+            case FIRE_BREATH -> {
                 beginSkill(Skill.FIRE_BREATH, "fire_breath");
                 breathCooldown = settings.breathCooldownTicks();
-            } else if (summonCooldown <= 0) {
+            }
+            case SUMMON -> {
                 beginSkill(Skill.SUMMON, "summon");
                 summonCooldown = settings.summonCooldownTicks();
-            } else if (meteorCooldown <= 0) {
+            }
+            case METEOR -> {
                 beginSkill(Skill.METEOR, "meteor");
                 meteorCooldown = settings.meteorCooldownTicks();
             }
-            return;
-        }
-
-        if (phase == Phase.P3 && p3SummonCooldown <= 0) {
-            beginSkill(Skill.SUMMON, "summon");
-            p3SummonCooldown = settings.p3SummonIntervalTicks();
-            summonCooldown = settings.summonCooldownTicks();
-        } else if (summonCooldown <= 0) {
-            beginSkill(Skill.SUMMON, "summon");
-            summonCooldown = settings.summonCooldownTicks();
-        } else if (prisonCooldown <= 0) {
-            beginSkill(Skill.BONE_PRISON, "bone_prison");
-            prisonCooldown = settings.prisonCooldownTicks();
-        } else if (boneSpikesCooldown <= 0) {
-            beginSkill(Skill.BONE_SPIKES, "bone_spikes");
-            boneSpikesCooldown = settings.boneSpikesCooldownTicks();
-            boneSpikeHitPlayers.clear();
-            announce(plugin.messages().component("boss.bone-dragon.bone-spikes"));
-        } else if (chargeCooldown <= 0) {
-            beginSkill(Skill.GROUND_CHARGE, "ground_charge");
-            chargeCooldown = settings.chargeCooldownTicks();
-            chargeDirection = target.getLocation().toVector().subtract(controller.getLocation().toVector()).setY(0);
-            if (chargeDirection.lengthSquared() < 0.0001) chargeDirection = facing.clone();
-            else chargeDirection.normalize();
-            chargeHitPlayers.clear();
-        } else if (breathCooldown <= 0 && distanceSquared <= settings.breathRange() * settings.breathRange()) {
-            beginSkill(Skill.FIRE_BREATH, "fire_breath");
-            breathCooldown = settings.breathCooldownTicks();
-        } else if (tailCooldown <= 0 && distanceSquared <= settings.tailRange() * settings.tailRange()) {
-            beginSkill(Skill.TAIL_SWEEP, "tail_sweep");
-            tailCooldown = settings.tailCooldownTicks();
+            case BONE_PRISON -> {
+                beginSkill(Skill.BONE_PRISON, "bone_prison");
+                prisonCooldown = settings.prisonCooldownTicks();
+            }
+            case BONE_SPIKES -> {
+                beginSkill(Skill.BONE_SPIKES, "bone_spikes");
+                boneSpikesCooldown = settings.boneSpikesCooldownTicks();
+                boneSpikeHitPlayers.clear();
+                announce(plugin.messages().component("boss.bone-dragon.bone-spikes"));
+            }
+            case GROUND_CHARGE -> {
+                beginSkill(Skill.GROUND_CHARGE, "ground_charge");
+                chargeCooldown = settings.chargeCooldownTicks();
+                chargeDirection = target.getLocation().toVector()
+                        .subtract(controller.getLocation().toVector()).setY(0);
+                if (chargeDirection.lengthSquared() < 0.0001) chargeDirection = facing.clone();
+                else chargeDirection.normalize();
+                chargeHitPlayers.clear();
+            }
+            case TAIL_SWEEP -> {
+                beginSkill(Skill.TAIL_SWEEP, "tail_sweep");
+                tailCooldown = settings.tailCooldownTicks();
+            }
+            default -> { }
         }
     }
 
@@ -1427,11 +1488,14 @@ public final class BoneDragon implements ScriptedBossLifecycle {
             entity.getPersistentDataContainer().set(plugin.bossTypeKey(), PersistentDataType.STRING,
                     BoneDragonManager.MINION_TYPE_ID);
         });
-        setMinionBase(ruler, Attribute.MAX_HEALTH, Math.min(1024.0, settings.deathRulerHealth()));
+        double maximumHealth = scaledEncounterHealth(settings.deathRulerHealth());
+        setMinionBase(ruler, Attribute.MAX_HEALTH, maximumHealth);
         setMinionBase(ruler, Attribute.ATTACK_DAMAGE, 0.0);
         setMinionBase(ruler, Attribute.MOVEMENT_SPEED, 0.27);
         setMinionBase(ruler, Attribute.FOLLOW_RANGE, 64.0);
-        ruler.setHealth(Math.min(1024.0, settings.deathRulerHealth()));
+        ruler.setHealth(maximumHealth);
+        ruler.setMaximumNoDamageTicks(0);
+        ruler.setNoDamageTicks(0);
         enforceDeathRulerPacifism(ruler);
         UUID id = ruler.getUniqueId();
         deathRulers.add(id);
@@ -1625,10 +1689,13 @@ public final class BoneDragon implements ScriptedBossLifecycle {
             entity.getPersistentDataContainer().set(plugin.bossTypeKey(), PersistentDataType.STRING,
                     BoneDragonManager.MINION_TYPE_ID);
         });
-        setMinionBase(skeleton, Attribute.MAX_HEALTH, Math.min(1024.0, health));
+        double maximumHealth = scaledEncounterHealth(health);
+        setMinionBase(skeleton, Attribute.MAX_HEALTH, maximumHealth);
         setMinionBase(skeleton, Attribute.ATTACK_DAMAGE, damage);
         setMinionBase(skeleton, Attribute.MOVEMENT_SPEED, 0.29);
-        skeleton.setHealth(Math.min(1024.0, health));
+        skeleton.setHealth(maximumHealth);
+        skeleton.setMaximumNoDamageTicks(0);
+        skeleton.setNoDamageTicks(0);
         skeleton.setTarget(target);
         minions.add(skeleton.getUniqueId());
         applyMinionResistance(skeleton);
@@ -1743,7 +1810,45 @@ public final class BoneDragon implements ScriptedBossLifecycle {
         }
     }
 
+    /**
+     * Runs before other damage plugins so each attacker has an independent hit
+     * window. This replaces Bukkit's victim-wide invulnerability frames, which
+     * otherwise discard most simultaneous party damage.
+     */
+    public boolean rejectRateLimitedPlayerDamage(EntityDamageByEntityEvent event) {
+        UUID victimId = event.getEntity().getUniqueId();
+        Map<UUID, Long> gate;
+        boolean controllerVictim = victimId.equals(controller.getUniqueId());
+        if (controllerVictim) {
+            gate = nextAcceptedPlayerHit;
+        } else if (minions.contains(victimId) || deathRulers.contains(victimId)) {
+            gate = nextAcceptedMinionPlayerHits.computeIfAbsent(victimId, ignored -> new HashMap<>());
+        } else {
+            return false;
+        }
+        // Reject scripted immunity before other plugins can turn the same hit into
+        // proc/skill damage. These hits must not consume this attacker's hit window.
+        if (controllerVictim && (controllerDamageLocked()
+                || phase == Phase.P3 && isProjectileDamage(event))) return true;
+        Player attacker = damagePlayer(event);
+        if (attacker == null) return false;
+        if (isLinkedPlayerDamage(event, attacker)
+                || PlayerDamageEventSupport.isYknRpgSyntheticDamage()) {
+            preApprovedPlayerDamageEvents.add(event);
+            return false;
+        }
+        if (event.getDamage() <= 0.0) return false;
+        if (!acceptPlayerHit(gate, attacker)) return true;
+        preApprovedPlayerDamageEvents.add(event);
+        return false;
+    }
+
+    public void clearPlayerDamageApproval(EntityDamageEvent event) {
+        preApprovedPlayerDamageEvents.remove(event);
+    }
+
     public boolean handleIncomingDamage(EntityDamageEvent event) {
+        boolean preApproved = preApprovedPlayerDamageEvents.contains(event);
         if (dying || pendingPhase != null) {
             event.setCancelled(true);
             return true;
@@ -1754,6 +1859,11 @@ public final class BoneDragon implements ScriptedBossLifecycle {
             return true;
         }
         Player attacker = damagePlayer(event);
+        if (attacker != null && event.getDamage() > 0.0 && !preApproved
+                && !acceptPlayerHit(nextAcceptedPlayerHit, attacker)) {
+            event.setCancelled(true);
+            return true;
+        }
         Location headCriticalImpact = consumeHeadCritical(attacker);
         if (phase == Phase.P3 && isProjectileDamage(event)) {
             event.setCancelled(true);
@@ -1783,13 +1893,16 @@ public final class BoneDragon implements ScriptedBossLifecycle {
             }
         }
         if (consumePhaseBreakingHit(event, Math.max(0.0, event.getFinalDamage()))) return true;
-        if (!entranceActive && skill != Skill.STUN && skill != Skill.WING_BREAK && attacker != null) {
+        if (!entranceActive && skill != Skill.STUN && skill != Skill.WING_BREAK && attacker != null
+                && !event.isCancelled() && event.getFinalDamage() > 0.0) {
             BoneDragonSettings settings = plugin.boneDragonSettings();
             if (skill == Skill.GRAB) {
-                if (!event.isCancelled() && event.getFinalDamage() > 0.0) startStun();
+                startStun();
             } else if (phase == Phase.P1) {
                 p1DamageHits++;
-                if (p1DamageHits >= settings.p1StunHitCount()) startStun();
+                long requiredHits = (long) Math.max(1, settings.p1StunHitCount())
+                        * encounterParticipantCount();
+                if (p1DamageHits >= Math.min(Integer.MAX_VALUE, requiredHits)) startStun();
             }
         }
         phaseHealthRemaining = Math.max(0.0,
@@ -1905,7 +2018,8 @@ public final class BoneDragon implements ScriptedBossLifecycle {
     private void damageWithSkill(Player player, double damage) {
         if (damage <= 0.0 || !player.isValid() || player.isDead()) return;
         boolean blocking = player.isBlocking();
-        player.damage(plugin.slayer().incomingDamage(player, damage), skillDamageSource);
+        plugin.slayer().dealSkillDamage(player,
+                plugin.slayer().incomingDamage(player, damage), skillDamageSource);
         if (!blocking) return;
         int cooldown = (int) Math.min(Integer.MAX_VALUE, plugin.boneDragonSettings().shieldDisableTicks());
         player.setCooldown(Material.SHIELD, cooldown);
@@ -1926,6 +2040,24 @@ public final class BoneDragon implements ScriptedBossLifecycle {
         if (byEntity.getDamager() instanceof Projectile projectile
                 && projectile.getShooter() instanceof Player player) return player;
         return null;
+    }
+
+    private boolean isLinkedPlayerDamage(EntityDamageEvent event, Player attacker) {
+        UUID victimId = event.getEntity().getUniqueId();
+        UUID attackerId = attacker.getUniqueId();
+        for (EntityDamageEvent active : preApprovedPlayerDamageEvents) {
+            if (!active.getEntity().getUniqueId().equals(victimId)) continue;
+            Player activeAttacker = damagePlayer(active);
+            if (activeAttacker != null && activeAttacker.getUniqueId().equals(attackerId)) return true;
+        }
+        return false;
+    }
+
+    private boolean acceptPlayerHit(Map<UUID, Long> nextAcceptedHits, Player attacker) {
+        UUID attackerId = attacker.getUniqueId();
+        if (age < nextAcceptedHits.getOrDefault(attackerId, Long.MIN_VALUE)) return false;
+        nextAcceptedHits.put(attackerId, age + plugin.boneDragonSettings().playerHitCooldownTicks());
+        return true;
     }
 
     private void startStun() {
@@ -1967,8 +2099,7 @@ public final class BoneDragon implements ScriptedBossLifecycle {
         }
         if (elapsed < settings.stunDurationTicks()) return;
 
-        skill = Skill.NONE;
-        skillStartedAt = 0L;
+        finishSkill();
         if (phase == Phase.P1) {
             if (model != null) model.playLoop("idle_fly");
             controller.getWorld().playSound(location, Sound.ENTITY_ENDER_DRAGON_FLAP, 3.0f, 0.85f);
@@ -2035,7 +2166,16 @@ public final class BoneDragon implements ScriptedBossLifecycle {
         skill = Skill.NONE;
         groundWalking = false;
         skillStartedAt = 0L;
+        nextSkillAt = age + skillTimingTicks(phase == Phase.P1
+                ? "phase-one-delay-seconds" : "phase-two-three-delay-seconds",
+                phase == Phase.P1 ? 1.0 : 0.8);
         if (model != null) model.playLoop(phaseIdleAnimation());
+    }
+
+    private long skillTimingTicks(String key, double fallbackSeconds) {
+        double configured = plugin.getConfig().getDouble(
+                "bone-dragon.abilities.cast-timing." + key, fallbackSeconds);
+        return Math.max(1L, Math.round(Math.max(0.05, configured) * 20.0));
     }
 
     private void face(Location target) {
@@ -2102,6 +2242,7 @@ public final class BoneDragon implements ScriptedBossLifecycle {
             Entity entity = Bukkit.getEntity(id);
             return entity == null || !entity.isValid() || entity.isDead();
         });
+        pruneMinionPlayerHitGates();
     }
 
     private void cleanDeathRulers() {
@@ -2110,6 +2251,12 @@ public final class BoneDragon implements ScriptedBossLifecycle {
             return entity == null || !entity.isValid() || entity.isDead();
         });
         deathRulerNextHealAt.keySet().retainAll(deathRulers);
+        pruneMinionPlayerHitGates();
+    }
+
+    private void pruneMinionPlayerHitGates() {
+        nextAcceptedMinionPlayerHits.keySet().removeIf(
+                id -> !minions.contains(id) && !deathRulers.contains(id));
     }
 
     private void refreshDeathRulerTimers() {
@@ -2261,6 +2408,9 @@ public final class BoneDragon implements ScriptedBossLifecycle {
         }
         deathRulers.clear();
         deathRulerNextHealAt.clear();
+        nextAcceptedPlayerHit.clear();
+        nextAcceptedMinionPlayerHits.clear();
+        preApprovedPlayerDamageEvents.clear();
     }
 
     private void closeModel() {
@@ -2280,7 +2430,20 @@ public final class BoneDragon implements ScriptedBossLifecycle {
             case P2 -> settings.phaseTwoHealth();
             case P3 -> settings.phaseThreeHealth();
         };
-        return Math.min(BossHealthLimits.MAXIMUM, soloHealth * encounterHealthMultiplier);
+        return scaledEncounterHealth(soloHealth);
+    }
+
+    private double scaledEncounterHealth(double soloHealth) {
+        return Math.min(BossHealthLimits.MAXIMUM, Math.max(1.0, soloHealth) * encounterHealthMultiplier);
+    }
+
+    private int encounterParticipantCount() {
+        int participants = plugin.arenaManager()
+                .challengeParticipantCount(id(), controller.getWorld());
+        if (participants > 0) return participants;
+        return Math.max(1, (int) controller.getWorld().getPlayers().stream()
+                .filter(this::isCombatPlayer)
+                .count());
     }
 
     private static double normalizeHealthMultiplier(Double multiplier) {

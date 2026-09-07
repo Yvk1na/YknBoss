@@ -30,7 +30,8 @@ public record BoneDragonArenaSettings(
                 root.getLong("seed", 761923846123L),
                 root.getBoolean("auto-create", false),
                 Math.max(20, Math.min(200, root.getInt("summon-duration-seconds", 3) * 20)),
-                RaidScalingRules.load(root),
+                RaidScalingRules.load(root, 75.0, java.util.List.of(
+                        1.00, 1.50, 2.25, 3.00, 3.75, 4.50, 5.25, 6.00, 6.75, 7.50)),
                 Math.max(20, Math.min(72000, root.getInt("return-delay-seconds", 30) * 20)),
                 Math.max(20, Math.min(1200, root.getInt("respawn-delay-seconds", 10) * 20))
         );

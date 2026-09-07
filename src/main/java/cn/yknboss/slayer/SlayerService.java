@@ -1,6 +1,7 @@
 package cn.yknboss.slayer;
 
 import cn.yknboss.YknBossPlugin;
+import org.bukkit.damage.DamageSource;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
@@ -12,6 +13,12 @@ public interface SlayerService {
     double outgoingDamage(Player player, double damage, boolean executeWindow);
 
     double incomingDamage(Player player, double damage);
+
+    /**
+     * Delivers damage produced by a scripted boss ability. The amount passed to
+     * this method has already gone through the YknBoss Slayer resistance layer.
+     */
+    void dealSkillDamage(Player player, double damage, DamageSource source);
 
     int respawnDelayTicks(Player player, int baseDelayTicks);
 
@@ -40,6 +47,11 @@ public interface SlayerService {
             @Override
             public double incomingDamage(Player player, double damage) {
                 return damage;
+            }
+
+            @Override
+            public void dealSkillDamage(Player player, double damage, DamageSource source) {
+                player.damage(Math.max(0.0, damage), source);
             }
 
             @Override

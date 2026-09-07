@@ -1093,6 +1093,12 @@ public final class EndsunGuardArenaManager {
         return Math.max(1, count);
     }
 
+    public int challengeParticipantCount(UUID bossId, World world) {
+        ArenaInstance instance = instanceForWorld(world);
+        if (instance == null || bossId == null || !bossId.equals(instance.activeBossId)) return 0;
+        return Math.max(1, instance.eligibleParticipants.size());
+    }
+
     public boolean isActiveCombatant(Player player) {
         ArenaInstance instance = instanceByPlayer.get(player.getUniqueId());
         return instance != null

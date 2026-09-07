@@ -7,6 +7,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Zombie;
 import org.bukkit.block.Block;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.persistence.PersistentDataType;
@@ -144,6 +145,24 @@ public final class BoneDragonManager {
     public boolean handleIncomingDamage(EntityDamageEvent event) {
         BoneDragon boss = bosses.get(event.getEntity().getUniqueId());
         return boss != null && boss.handleIncomingDamage(event);
+    }
+
+    public boolean rejectRateLimitedPlayerDamage(EntityDamageByEntityEvent event) {
+        BoneDragon controllerBoss = bosses.get(event.getEntity().getUniqueId());
+        if (controllerBoss != null) return controllerBoss.rejectRateLimitedPlayerDamage(event);
+        for (BoneDragon boss : bosses.values()) {
+            if (boss.rejectRateLimitedPlayerDamage(event)) return true;
+        }
+        return false;
+    }
+
+    public void clearPlayerDamageApproval(EntityDamageEvent event) {
+        BoneDragon controllerBoss = bosses.get(event.getEntity().getUniqueId());
+        if (controllerBoss != null) {
+            controllerBoss.clearPlayerDamageApproval(event);
+            return;
+        }
+        for (BoneDragon boss : bosses.values()) boss.clearPlayerDamageApproval(event);
     }
 
     public boolean enforceControllerDamageLock(EntityDamageEvent event) {

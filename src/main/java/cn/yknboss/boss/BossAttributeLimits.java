@@ -1,8 +1,8 @@
 package cn.yknboss.boss;
 
-/** Attribute ceilings configured on the target Paper server. */
+/** Effective vanilla attribute ceilings on the target Paper server. */
 public final class BossAttributeLimits {
-    public static final double MAX_ARMOR = 100_000.0;
+    public static final double MAX_ARMOR = 30.0;
 
     private BossAttributeLimits() {
     }

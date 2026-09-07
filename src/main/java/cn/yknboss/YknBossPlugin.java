@@ -398,7 +398,7 @@ public final class YknBossPlugin extends JavaPlugin {
             if (!getConfig().isSet(spikesRoot + "spikes-per-ring")) getConfig().set(spikesRoot + "spikes-per-ring", 18);
             if (!getConfig().isSet(spikesRoot + "hit-radius")) getConfig().set(spikesRoot + "hit-radius", 1.75);
         }
-        if (version >= 48) return false;
+        if (version >= 54) return false;
         if (version < 23) {
             String absorbRoot = "bone-dragon.abilities.skeleton-absorb.";
             if (!getConfig().isSet(absorbRoot + "max-damage-increase-percent")) {
@@ -641,15 +641,240 @@ public final class YknBossPlugin extends JavaPlugin {
                     " &2蚀痕 &f{mark}&7/3 &5终焉刻度 &f{gauge}&7/&f{max}");
         }
         if (version < 48) getConfig().set("messages.boss.endsun-guard.eclipse-meter", null);
-        getConfig().set("config-version", 48);
-        getLogger().info("Boss 配置已迁移至 v48（移除物品栏上方的阿努赫日蚀刻度提示）。");
+        if (version < 49) migrateCombatBalanceV49();
+        if (version < 50) migrateCombatBalanceV50();
+        if (version < 51) migrateEndsunEmpiricalBalanceV51();
+        if (version < 52 && !getConfig().isSet("boss-skill-damage.ignore-aura-mob-master")) {
+            getConfig().set("boss-skill-damage.ignore-aura-mob-master", true);
+        }
+        if (version < 53) migrateCastingFlowV53();
+        if (version < 54) migrateUniformSevenMinuteBalanceV54();
+        getConfig().set("config-version", 54);
+        getLogger().info("Boss 配置已迁移至 v54（1 至 10 人统一约 7 分钟通关曲线）。");
         return true;
+    }
+
+    private void migrateCastingFlowV53() {
+        setExplicitDefault("endsun-guard.reactive-teleport.hit-count", 5);
+        setExplicitDefault("endsun-guard.abilities.cast-timing.initial-delay-seconds", 1.5);
+        setExplicitDefault("endsun-guard.abilities.cast-timing.retry-delay-seconds", 0.5);
+        setExplicitDefault("endsun-guard.abilities.cast-timing.phase-one-two-delay-seconds", 1.2);
+        setExplicitDefault("endsun-guard.abilities.cast-timing.phase-three-delay-seconds", 0.8);
+        setExplicitDefault("bone-dragon.abilities.cast-timing.retry-delay-seconds", 0.5);
+        setExplicitDefault("bone-dragon.abilities.cast-timing.phase-one-delay-seconds", 1.0);
+        setExplicitDefault("bone-dragon.abilities.cast-timing.phase-two-three-delay-seconds", 0.8);
+        setExplicitDefault("end-witch.abilities.world-end.gauge-after-shield-break", 30.0);
+
+        String chainPath = "end-witch.abilities.cast-timing.chain-skill-delay-seconds";
+        if (!getConfig().contains(chainPath, true)) {
+            String legacyPath = "end-witch.abilities.cast-timing.repeated-skill-delay-seconds";
+            double delay = getConfig().contains(legacyPath, true)
+                    ? getConfig().getDouble(legacyPath) : 0.55;
+            getConfig().set(chainPath, delay);
+        }
+
+        String brokenPath = "messages.boss.end-witch.world-end-broken";
+        String oldBroken = "&a&l终焉护盾破碎！伊芙蕾雅虚弱 8 秒，刻度回退至 80。";
+        if (oldBroken.equals(getConfig().getString(brokenPath))) {
+            getConfig().set(brokenPath,
+                    "&a&l终焉护盾破碎！伊芙蕾雅虚弱 8 秒，刻度回退至 {gauge}。");
+        }
+        String cyanPath = "messages.boss.end-witch.aux.rune_cyan";
+        if ("&b复诵文字".equals(getConfig().getString(cyanPath))) {
+            getConfig().set(cyanPath, "&b连缀文字");
+        }
+    }
+
+    private void migrateUniformSevenMinuteBalanceV54() {
+        java.util.List<Double> oldMultipliers = java.util.List.of(
+                1.00, 1.45, 1.90, 2.30, 2.70, 2.85, 2.98, 3.10, 3.20, 3.30);
+        java.util.List<Double> standardMultipliers = java.util.List.of(
+                1.00, 1.50, 2.25, 3.00, 3.75, 4.50, 5.25, 6.00, 6.75, 7.50);
+        java.util.List<Double> endsunMultipliers = java.util.List.of(
+                1.00, 2.00, 3.00, 4.00, 5.00, 6.00, 7.00, 8.00, 9.00, 10.00);
+
+        for (String arenaRoot : java.util.List.of(
+                "bone-dragon-arena", "endsun-guard-arena", "end-witch-arena")) {
+            migrateKnownDefaultNumber(arenaRoot + ".challenge-duration-seconds", 600.0, 900.0);
+            migrateKnownDefaultNumber(arenaRoot
+                    + ".challenge-duration-reduction-per-extra-player-seconds", 0.0, 60.0);
+            migrateKnownDefaultNumber(arenaRoot + ".minimum-challenge-duration-seconds", 600.0, 60.0);
+        }
+        migrateKnownDefaultNumberList("bone-dragon-arena.boss-health-multipliers-by-player-count",
+                standardMultipliers, oldMultipliers);
+        migrateKnownDefaultNumberList("endsun-guard-arena.boss-health-multipliers-by-player-count",
+                endsunMultipliers, oldMultipliers);
+        migrateKnownDefaultNumberList("end-witch-arena.boss-health-multipliers-by-player-count",
+                standardMultipliers, oldMultipliers);
+        migrateKnownDefaultNumber("bone-dragon-arena.boss-health-increase-per-extra-player-percent",
+                75.0, 10.0);
+        migrateKnownDefaultNumber("endsun-guard-arena.boss-health-increase-per-extra-player-percent",
+                100.0, 10.0);
+        migrateKnownDefaultNumber("end-witch-arena.boss-health-increase-per-extra-player-percent",
+                75.0, 10.0);
+
+        migrateKnownDefaultNumber("bone-dragon.phases.p1-health", 33_871.0, 55_000.0);
+        migrateKnownDefaultNumber("bone-dragon.phases.p2-health", 30_792.0, 50_000.0);
+        migrateKnownDefaultNumber("bone-dragon.phases.p3-health", 27_713.0, 45_000.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.skull-barrage.guard-health", 493.0, 800.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.summon-skeletons.health", 739.0, 1_200.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.death-summon.ruler-health", 1_540.0, 2_500.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p1-health", 38_061.0, 78_750.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p2-health", 33_832.0, 70_000.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p3-health", 29_603.0, 61_250.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.soul-crown.shield-heal-on-burning-hit",
+                97.0, 200.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.solar-shield.maximum-energy", 1_208.0, 2_500.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.heart-furnace.reflection-health", 725.0, 1_500.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.heart-furnace.shield-restore-per-soul", 12.0, 25.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.black-sun.furnace-health", 967.0, 2_000.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.sunfall.armor-break-damage", 1_208.0, 2_500.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.twin-eclipse.body-health", 1_450.0, 3_000.0);
+        migrateKnownDefaultNumber("end-witch.phases.p1-health", 83_574.0, 135_708.0);
+        migrateKnownDefaultNumber("end-witch.phases.p2-health", 80_479.0, 130_682.0);
+        migrateKnownDefaultNumber("end-witch.phases.p3-health", 77_383.0, 125_655.0);
+        migrateKnownDefaultNumber("end-witch.abilities.world-end.shield-health", 2_463.0, 4_000.0);
+        migrateKnownDefaultNumber("end-witch.abilities.world-end.shield-player-scaling", 0.75, 0.65);
+        migrateKnownDefaultNumber("end-witch.abilities.world-end.channel-reduction-seconds", 0.0, 1.0);
+        migrateKnownDefaultNumber("end-witch.abilities.world-end.minimum-channel-seconds", 12.0, 1.0);
+        setExplicitDefault("bone-dragon.damage-intake.player-hit-cooldown-ticks", 10);
+        setExplicitDefault("end-witch.damage-intake.player-hit-cooldown-ticks", 10);
+        setExplicitDefault("end-witch.damage-intake.preserve-effective-health-above-cap", true);
+    }
+
+    private void setExplicitDefault(String path, Object value) {
+        if (!getConfig().contains(path, true)) getConfig().set(path, value);
+    }
+
+    private void migrateCombatBalanceV49() {
+        java.util.List<Double> healthMultipliers = java.util.List.of(
+                1.00, 1.45, 1.90, 2.30, 2.70, 2.85, 2.98, 3.10, 3.20, 3.30);
+        for (String arenaRoot : java.util.List.of(
+                "bone-dragon-arena", "endsun-guard-arena", "end-witch-arena")) {
+            String path = arenaRoot + ".boss-health-multipliers-by-player-count";
+            if (!getConfig().isSet(path)) getConfig().set(path, healthMultipliers);
+        }
+
+        migrateKnownDefaultNumber("bone-dragon.attack-damage", 180.0, 32.0, 70.0);
+        migrateKnownDefaultNumber("bone-dragon.armor", 18.0, 22.0, 50.0);
+        migrateKnownDefaultNumber("bone-dragon.phases.p1-health", 55_000.0, 409.6, 800.0);
+        migrateKnownDefaultNumber("bone-dragon.phases.p2-health", 50_000.0, 307.2, 500.0);
+        migrateKnownDefaultNumber("bone-dragon.phases.p3-health", 45_000.0, 307.2, 400.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.tail-sweep.damage", 260.0, 28.0, 40.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.grab.capture-damage", 120.0, 10.0, 15.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.skull-barrage.damage", 160.0, 12.0, 20.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.skull-barrage.guard-health", 800.0, 36.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.skull-barrage.guard-damage", 110.0, 9.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.fire-breath.damage", 55.0, 8.0, 20.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.summon-skeletons.health", 1_200.0, 40.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.summon-skeletons.damage", 110.0, 10.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.death-summon.ruler-health", 2_500.0, 60.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.meteor-rain.damage", 420.0, 24.0, 80.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.bone-prison.damage", 160.0, 10.0, 20.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.bone-spikes.damage", 300.0, 22.0, 50.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.ground-charge.damage", 340.0, 26.0, 50.0);
+
+        migrateKnownDefaultNumber("endsun-guard.attack-damage", 400.0, 26.0, 100.0);
+        migrateKnownDefaultNumber("endsun-guard.armor", 24.0, 22.0, 50.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p1-health", 90_000.0, 409.6, 1_000.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p2-health", 80_000.0, 307.2, 800.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p3-health", 70_000.0, 307.2, 600.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.scythe-return.outward-damage", 350.0, 18.0, 40.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.scythe-return.return-damage", 700.0, 36.0, 80.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.amethyst-judgement.damage", 900.0, 34.0, 68.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.soul-crown.flame-damage", 160.0, 8.0, 20.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.soul-crown.shield-heal-on-burning-hit", 200.0, 20.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.solar-shield.maximum-energy", 2_500.0, 200.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.heart-furnace.reflection-health", 1_500.0, 24.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.black-sun.collapse-damage", 500.0, 12.0, 30.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.black-sun.furnace-health", 3_000.0, 160.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.sand-funeral.damage", 120.0, 8.0, 20.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.scythe-echo.damage", 550.0, 24.0, 50.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.nether-boundary.return-damage", 300.0, 12.0, 30.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.sunfall.impact-damage", 550.0, 22.0, 50.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.sunfall.radiation-damage", 100.0, 5.0, 10.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.sunfall.armor-break-damage", 2_500.0, 45.0, 90.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.pharaoh-edict.reflect-damage", 250.0, 10.0, 20.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.pharaoh-edict.movement-damage", 550.0, 16.0, 40.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.pharaoh-edict.petrify-damage", 600.0, 18.0, 40.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.pharaoh-edict.group-damage", 400.0, 14.0, 30.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.twin-eclipse.body-health", 4_500.0, 180.0, 400.0);
+
+        migrateKnownDefaultNumber("end-witch.attack-damage", 1_000.0, 18.0, 120.0);
+        migrateKnownDefaultNumber("end-witch.armor", 30.0, 14.0, 30.0);
+        migrateKnownDefaultNumber("end-witch.phases.p1-health", 135_000.0, 420.0, 1_200.0);
+        migrateKnownDefaultNumber("end-witch.phases.p2-health", 130_000.0, 420.0, 1_000.0);
+        migrateKnownDefaultNumber("end-witch.phases.p3-health", 125_000.0, 420.0, 850.0);
+        migrateKnownDefaultNumber("end-witch.marks.third-stack-explosion-damage", 500.0, 10.0, 20.0);
+        migrateKnownDefaultNumber("end-witch.abilities.magic-arrows.damage", 700.0, 16.0, 40.0);
+        migrateKnownDefaultNumber("end-witch.abilities.black-skirt.damage", 650.0, 14.0, 30.0);
+        migrateKnownDefaultNumber("end-witch.abilities.fate-gaze.damage", 1_100.0, 24.0, 50.0);
+        migrateKnownDefaultNumber("end-witch.abilities.witch-blink.damage", 850.0, 18.0, 50.0);
+        migrateKnownDefaultNumber("end-witch.abilities.witch-blink.echo-damage", 750.0, 20.0, 40.0);
+        migrateKnownDefaultNumber("end-witch.abilities.witch-scissors.health", 3_500.0, 35.0);
+        migrateKnownDefaultNumber("end-witch.abilities.witch-scissors.damage", 1_600.0, 34.0, 80.0);
+        migrateKnownDefaultNumber("end-witch.abilities.silent-chant.rune-health", 1_800.0, 18.0);
+        migrateKnownDefaultNumber("end-witch.abilities.funeral-flowers.health", 2_400.0, 24.0);
+        migrateKnownDefaultNumber("end-witch.abilities.funeral-flowers.drain-damage", 200.0, 5.0, 10.0);
+        migrateKnownDefaultNumber("end-witch.abilities.funeral-flowers.boss-heal", 800.0, 12.0, 30.0);
+        migrateKnownDefaultNumber("end-witch.abilities.soul-pawn.crystal-health", 3_200.0, 32.0);
+        migrateKnownDefaultNumber("end-witch.abilities.time-funeral.damage", 1_200.0, 28.0, 60.0);
+        migrateKnownDefaultNumber("end-witch.abilities.doom-link.damage", 500.0, 10.0, 20.0);
+        migrateKnownDefaultNumber("end-witch.abilities.night-meteors.damage", 1_000.0, 26.0, 50.0);
+        migrateKnownDefaultNumber("end-witch.abilities.shadow-cage.pillar-health", 2_500.0, 20.0);
+        migrateKnownDefaultNumber("end-witch.abilities.shadow-cage.explosion-damage", 1_200.0, 25.0, 50.0);
+        migrateKnownDefaultNumber("end-witch.abilities.heaven-inversion.damage", 1_700.0, 35.0, 70.0);
+        migrateKnownDefaultNumber("end-witch.abilities.seven-ends.damage", 1_200.0, 24.0, 50.0);
+        migrateKnownDefaultNumber("end-witch.abilities.world-end.shield-health", 4_000.0, 240.0);
+    }
+
+    private void migrateCombatBalanceV50() {
+        migrateKnownDefaultNumber("endsun-guard.phases.p1-health", 89_489.0, 90_000.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p2-health", 79_545.0, 80_000.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p3-health", 69_602.0, 70_000.0);
+        migrateKnownDefaultNumber("end-witch.phases.p1-health", 135_708.0, 135_000.0);
+        migrateKnownDefaultNumber("end-witch.phases.p2-health", 130_682.0, 130_000.0);
+        migrateKnownDefaultNumber("end-witch.phases.p3-health", 125_655.0, 125_000.0);
+    }
+
+    private void migrateEndsunEmpiricalBalanceV51() {
+        migrateKnownDefaultNumber("endsun-guard.phases.p1-health", 78_750.0, 89_489.0, 90_000.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p2-health", 70_000.0, 79_545.0, 80_000.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p3-health", 61_250.0, 69_602.0, 70_000.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.black-sun.furnace-health", 2_000.0, 3_000.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.twin-eclipse.body-health", 3_000.0, 4_500.0);
+        if (!getConfig().isSet("endsun-guard.damage-intake.player-hit-cooldown-ticks")) {
+            getConfig().set("endsun-guard.damage-intake.player-hit-cooldown-ticks", 10);
+        }
     }
 
     private void migrateDefaultNumber(String path, double oldValue, double newValue) {
         if (Math.abs(getConfig().getDouble(path, oldValue) - oldValue) < 0.0001) {
             getConfig().set(path, newValue);
         }
+    }
+
+    private void migrateKnownDefaultNumber(String path, double newValue, double... oldValues) {
+        Object configured = getConfig().get(path);
+        if (!(configured instanceof Number number)) return;
+        double current = number.doubleValue();
+        for (double oldValue : oldValues) {
+            if (Math.abs(current - oldValue) >= 0.0001) continue;
+            getConfig().set(path, newValue);
+            return;
+        }
+    }
+
+    private void migrateKnownDefaultNumberList(String path, java.util.List<Double> newValues,
+                                               java.util.List<Double> oldValues) {
+        java.util.List<?> configured = getConfig().getList(path);
+        if (configured == null || configured.size() != oldValues.size()) return;
+        for (int index = 0; index < configured.size(); index++) {
+            Object value = configured.get(index);
+            if (!(value instanceof Number number)
+                    || Math.abs(number.doubleValue() - oldValues.get(index)) >= 0.0001) return;
+        }
+        getConfig().set(path, newValues);
     }
 
     private void warnAboutClampedDragonHealth() {

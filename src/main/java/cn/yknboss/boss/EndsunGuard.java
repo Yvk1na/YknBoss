@@ -40,10 +40,12 @@ import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -58,6 +60,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     private static final long PHASE_TRANSITION_TICKS = 30L;
     private static final long ENTRANCE_TICKS = 52L;
     private static final long DEATH_TICKS = 60L;
+    private static final long REACTIVE_CAST_COOLDOWN_TICKS = 20L;
     private static final int BOSS_GLOW_COLOR = 0xFF9D18;
     private static final float ENDSUN_BAKED_MODEL_SCALE = 1.5f;
 
@@ -125,6 +128,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         private final Set<UUID> outwardHits = new HashSet<>();
         private final Set<UUID> returnHits = new HashSet<>();
         private final Map<UUID, Long> nextSandHit = new HashMap<>();
+        private final Map<UUID, Long> nextAcceptedPlayerHit = new HashMap<>();
         private final Map<UUID, Integer> suffocationStacks = new HashMap<>();
         private final List<Location> skillLocations = new ArrayList<>();
         private final List<Vector> skillDirections = new ArrayList<>();
@@ -134,7 +138,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         private Skill activeSkill = Skill.NONE;
         private long skillStartedAt;
         private long nextSkillAt;
-        private int abilityCursor;
+        private final SkillRotation<Skill> skillRotation;
         private UUID skillTargetId;
         private Location skillOrigin;
         private Location skillEnd;
@@ -145,18 +149,19 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         private double shieldEnergy;
         private UUID lastHitSourceId;
         private boolean lastHitIndirect;
-        private float lastHitBoxDamage;
         private long lastHitAt = Long.MIN_VALUE;
         private long nextHurtReactionAt;
         private boolean walking;
         private long attackAnimationUntil;
         private boolean defeated;
         private int reactiveHitCount;
+        private long nextReactiveCastAt;
         private double maximumHealth;
         private double healthRemaining;
 
         private TwinBody(TwinType type) {
             this.type = type;
+            this.skillRotation = new SkillRotation<>(2, type == TwinType.SUN ? 0 : 5);
         }
     }
 
@@ -168,6 +173,9 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     private final double encounterHealthMultiplier;
     private final Map<UUID, Double> eclipseValues = new HashMap<>();
     private final Map<UUID, Double> damageThreat = new HashMap<>();
+    private final Map<UUID, Long> nextAcceptedPlayerHit = new HashMap<>();
+    private final Set<EntityDamageEvent> preApprovedPlayerDamageEvents =
+            Collections.newSetFromMap(new IdentityHashMap<>());
     private final EnumMap<Skill, Long> cooldowns = new EnumMap<>(Skill.class);
     private final Map<UUID, Integer> totemHits = new HashMap<>();
     private final Set<UUID> soulReflections = new HashSet<>();
@@ -203,6 +211,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     private long age;
     private long phaseHealthLockUntil;
     private long skillStartedAt;
+    private long nextSkillAt;
     private long slashEndsAt;
     private long phaseInvulnerableUntil;
     private long crownEndsAt;
@@ -231,8 +240,10 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     // is only a carrier and may be rewritten by model/level plugins.
     private double phaseHealthRemaining;
     private int teamFragmentProgress;
-    private int abilityCursor;
+    private final SkillRotation<Skill> skillRotation = new SkillRotation<>(
+            2, ThreadLocalRandom.current().nextInt());
     private int reactiveHitCount;
+    private long nextReactiveCastAt;
     private UUID judgementTarget;
     private Location scytheStart;
     private Location scytheEnd;
@@ -261,7 +272,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         bossBar.setVisible(true);
         applySettings(true);
         persistPhase();
-        shieldEnergy = plugin.endsunGuardSettings().shield().maximumEnergy();
+        shieldEnergy = scaledShieldMaximumEnergy();
     }
 
     public static EndsunGuard spawn(YknBossPlugin plugin, Location location) {
@@ -309,6 +320,10 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         entity.setCanPickupItems(false);
         entity.setRemoveWhenFarAway(false);
         entity.setPersistent(true);
+        // The vanilla cooldown is global to the victim and drops concurrent party
+        // attacks. A per-player gate below preserves the old solo rate safely.
+        entity.setMaximumNoDamageTicks(0);
+        entity.setNoDamageTicks(0);
         entity.getEquipment().clear();
         entity.getEquipment().setItemInMainHandDropChance(0.0f);
         entity.getEquipment().setItemInOffHandDropChance(0.0f);
@@ -346,6 +361,10 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
 
     private double scaledEncounterHealth(double soloHealth) {
         return Math.min(BossHealthLimits.MAXIMUM, Math.max(1.0, soloHealth) * encounterHealthMultiplier);
+    }
+
+    private double ultimateFurnaceMaximumHealth() {
+        return scaledEncounterHealth(plugin.endsunGuardSettings().ultimate().furnaceHealth());
     }
 
     private static double normalizeHealthMultiplier(Double multiplier) {
@@ -424,7 +443,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
             walking = moving;
             playLoop(walking ? "walk" : idleAnimation());
         }
-        if (age % 6L == 0L) selectSkill();
+        if (age >= nextSkillAt && age % 6L == 0L) selectSkill();
     }
 
     private void tickSkill() {
@@ -525,12 +544,11 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     }
 
     private void selectSkill() {
-        selectSkill(false);
-    }
-
-    private void selectSkill(boolean ignoreCooldown) {
         Player target = targetPlayer();
-        if (target == null) return;
+        if (target == null) {
+            nextSkillAt = age + castTimingTicks("retry-delay-seconds", 0.5);
+            return;
+        }
         List<Skill> candidates = switch (phase) {
             case P1 -> List.of(Skill.SHIELD, Skill.SAND_FUNERAL, Skill.SCYTHE_RETURN, Skill.NETHER_BOUNDARY,
                     Skill.CROWN_CAST, Skill.SCYTHE_ECHO, Skill.JUDGEMENT, Skill.SUNFALL, Skill.EDICT);
@@ -541,37 +559,35 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
                     Skill.SCYTHE_RETURN, Skill.EDICT, Skill.JUDGEMENT, Skill.NETHER_BOUNDARY,
                     Skill.CROWN_CAST, Skill.SOUL_DRAIN);
         };
-        for (int offset = 0; offset < candidates.size(); offset++) {
-            Skill candidate = candidates.get((abilityCursor + offset) % candidates.size());
-            if (!ready(candidate, ignoreCooldown)) continue;
-            abilityCursor = (abilityCursor + offset + 1) % candidates.size();
-            switch (candidate) {
-                case SCYTHE_RETURN -> beginScytheReturn(target);
-                case JUDGEMENT -> beginJudgement();
-                case CROWN_CAST -> beginCrown();
-                case SHIELD -> beginShield();
-                case SOUL_DRAIN -> beginSoulDrain();
-                case SAND_FUNERAL -> beginSandFuneral();
-                case SCYTHE_ECHO -> beginScytheEcho(target);
-                case NETHER_BOUNDARY -> beginNetherBoundary();
-                case SUNFALL -> beginSunfall();
-                case EDICT -> beginEdict();
-                case TWIN_ECLIPSE -> beginTwinEclipse();
-                default -> { }
-            }
+        Skill candidate = skillRotation.choose(candidates, this::ready);
+        if (candidate == null) {
+            nextSkillAt = age + castTimingTicks("retry-delay-seconds", 0.5);
             return;
+        }
+        switch (candidate) {
+            case SCYTHE_RETURN -> beginScytheReturn(target);
+            case JUDGEMENT -> beginJudgement();
+            case CROWN_CAST -> beginCrown();
+            case SHIELD -> beginShield();
+            case SOUL_DRAIN -> beginSoulDrain();
+            case SAND_FUNERAL -> beginSandFuneral();
+            case SCYTHE_ECHO -> beginScytheEcho(target);
+            case NETHER_BOUNDARY -> beginNetherBoundary();
+            case SUNFALL -> beginSunfall();
+            case EDICT -> beginEdict();
+            case TWIN_ECLIPSE -> beginTwinEclipse();
+            default -> { }
         }
     }
 
     private boolean ready(Skill candidate) {
-        return ready(candidate, false);
-    }
-
-    private boolean ready(Skill candidate, boolean ignoreCooldown) {
-        if (!ignoreCooldown && age < cooldowns.getOrDefault(candidate, 0L)) return false;
+        if (age < cooldowns.getOrDefault(candidate, 0L)) return false;
         if (candidate == Skill.SOUL_DRAIN && soulReflections.isEmpty()) return false;
         if (candidate == Skill.SHIELD && phase == Phase.P3) return false;
         if (candidate == Skill.TWIN_ECLIPSE && (phase != Phase.P3 || twinSun != null || twinNight != null)) return false;
+        if (candidate == Skill.CROWN_CAST && (age < crownEndsAt || !totemHits.isEmpty())) return false;
+        if (candidate == Skill.NETHER_BOUNDARY && (boundaryCenter != null || !boundaryReturns.isEmpty())) return false;
+        if (candidate == Skill.EDICT && activeEdict != null) return false;
         return true;
     }
 
@@ -886,16 +902,13 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
             body.model.setHitBoxDamageModifier((boneName, causingEntityId, indirect, impact, damage) -> {
                 body.lastHitSourceId = causingEntityId;
                 body.lastHitIndirect = indirect;
-                body.lastHitBoxDamage = damage;
                 body.lastHitAt = age;
-                queueTwinHitBoxDamage(body, causingEntityId, indirect, damage);
-                // The hit-box callback is the authoritative route. Returning zero prevents
-                // BetterModel's follow-up source event from applying or forwarding it twice.
-                return 0.0f;
+                // Let BetterModel forward the hit to the source Husk so YknRpg can replace
+                // the vanilla amount before YknBoss settles the scripted health pool.
+                return damage;
             });
         }
         body.nextSkillAt = age + (type == TwinType.SUN ? 24L : 48L);
-        body.abilityCursor = type == TwinType.SUN ? 0 : 5;
         acquireTwinTarget(body);
         updateTwinBossBar(body);
         return body;
@@ -950,24 +963,29 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     }
 
     private void selectTwinSkill(TwinBody body) {
-        selectTwinSkill(body, false);
-    }
-
-    private void selectTwinSkill(TwinBody body, boolean ignoreCooldown) {
         if (body == null || body.defeated || body.entity == null || !body.entity.isValid()) return;
         List<Skill> candidates = List.of(
                 Skill.SCYTHE_RETURN, Skill.JUDGEMENT, Skill.CROWN_CAST, Skill.SHIELD,
                 Skill.SOUL_DRAIN, Skill.SAND_FUNERAL, Skill.SCYTHE_ECHO,
                 Skill.NETHER_BOUNDARY, Skill.SUNFALL, Skill.EDICT);
-        for (int offset = 0; offset < candidates.size(); offset++) {
-            Skill candidate = candidates.get((body.abilityCursor + offset) % candidates.size());
-            if (!ignoreCooldown && age < body.cooldowns.getOrDefault(candidate, 0L)) continue;
-            if (candidate == Skill.SOUL_DRAIN && soulReflections.isEmpty()) continue;
-            body.abilityCursor = (body.abilityCursor + offset + 1) % candidates.size();
-            beginTwinSkill(body, candidate);
-            return;
-        }
-        body.nextSkillAt = age + 10L;
+        Skill candidate = body.skillRotation.choose(candidates, selected -> twinSkillReady(body, selected));
+        if (candidate != null) beginTwinSkill(body, candidate);
+        else body.nextSkillAt = age + 10L;
+    }
+
+    private boolean twinSkillReady(TwinBody body, Skill candidate) {
+        if (age < body.cooldowns.getOrDefault(candidate, 0L)) return false;
+        if (candidate == Skill.SOUL_DRAIN && soulReflections.isEmpty()) return false;
+        if (!isTwinSharedSkill(candidate)) return true;
+        if (age < crownEndsAt || !totemHits.isEmpty() || boundaryCenter != null
+                || !boundaryReturns.isEmpty() || activeEdict != null) return false;
+        TwinBody other = body == twinSun ? twinNight : twinSun;
+        return other == null || other.defeated || !isTwinSharedSkill(other.activeSkill);
+    }
+
+    private static boolean isTwinSharedSkill(Skill skill) {
+        return skill == Skill.SOUL_DRAIN || skill == Skill.CROWN_CAST
+                || skill == Skill.NETHER_BOUNDARY || skill == Skill.EDICT;
     }
 
     private void beginTwinSkill(TwinBody body, Skill next) {
@@ -1039,8 +1057,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
                 announce("boss.endsun-guard.crown-start");
             }
             case SHIELD -> {
-                EndsunGuardSettings.Shield settings = plugin.endsunGuardSettings().shield();
-                body.shieldEnergy = settings.maximumEnergy();
+                body.shieldEnergy = scaledShieldMaximumEnergy();
                 announce("boss.endsun-guard.shield-start");
             }
             case SOUL_DRAIN -> announce("boss.endsun-guard.soul-drain");
@@ -1251,7 +1268,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         if (consumed > 0) {
             furnaceDamageBonus = Math.min(settings.maximumDamageIncrease(),
                     furnaceDamageBonus + consumed * settings.damageIncreasePerSoul());
-            body.shieldEnergy = Math.min(plugin.endsunGuardSettings().shield().maximumEnergy(),
+            body.shieldEnergy = Math.min(scaledShieldMaximumEnergy(),
                     body.shieldEnergy + consumed * settings.shieldRestorePerSoul());
         }
         finishTwinSkill(body);
@@ -1649,7 +1666,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
 
     private void beginShield() {
         EndsunGuardSettings.Shield settings = plugin.endsunGuardSettings().shield();
-        shieldEnergy = Math.max(shieldEnergy, settings.maximumEnergy() * settings.minimumCastEnergyRatio());
+        shieldEnergy = Math.max(shieldEnergy, scaledShieldMaximumEnergy() * settings.minimumCastEnergyRatio());
         beginSkillHold(Skill.SHIELD, "solar_shield");
         cooldowns.put(Skill.SHIELD, age + adjustedCooldown(settings.cooldownTicks()));
         announce("boss.endsun-guard.shield-start");
@@ -1697,7 +1714,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         if (consumed > 0) {
             furnaceDamageBonus = Math.min(settings.maximumDamageIncrease(),
                     furnaceDamageBonus + consumed * settings.damageIncreasePerSoul());
-            shieldEnergy = Math.min(plugin.endsunGuardSettings().shield().maximumEnergy(),
+            shieldEnergy = Math.min(scaledShieldMaximumEnergy(),
                     shieldEnergy + consumed * settings.shieldRestorePerSoul());
             announce("boss.endsun-guard.soul-consumed", "count", consumed,
                     "bonus", Math.round(furnaceDamageBonus * 100.0));
@@ -1759,11 +1776,11 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     private void beginBlackSun() {
         ultimateUsed = true;
         // Black Sun is a protected ultimate channel. Hits during it damage the
-        // ritual furnace, but must never contribute to the three-hit reactive teleport.
+        // ritual furnace, but must never contribute to the hit-count reactive teleport.
         reactiveHitCount = 0;
         eclipseFormUntil = Math.max(eclipseFormUntil,
                 age + plugin.endsunGuardSettings().ultimate().durationTicks());
-        ultimateFurnaceHealth = plugin.endsunGuardSettings().ultimate().furnaceHealth();
+        ultimateFurnaceHealth = ultimateFurnaceMaximumHealth();
         shadowBarriers.clear();
         teamBarrierActive = false;
         teamFragmentProgress = 0;
@@ -1923,7 +1940,43 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         addEclipse(player, Math.max(0.0, damage) * plugin.endsunGuardSettings().eclipse().fireGainPerDamage());
     }
 
+    /**
+     * Runs at LOWEST, before YknRpg's fixed-damage and on-hit listeners. Returning
+     * true rejects only a repeated hit from the same player against the same body;
+     * different party members remain independent even in the same server tick.
+     */
+    public boolean rejectRateLimitedPlayerDamage(EntityDamageByEntityEvent event) {
+        Map<UUID, Long> gate;
+        boolean controllerVictim = event.getEntity().getUniqueId().equals(controller.getUniqueId());
+        if (controllerVictim) {
+            gate = nextAcceptedPlayerHit;
+        } else {
+            TwinBody twin = twinBody(event.getEntity().getUniqueId());
+            if (twin == null) return false;
+            gate = twin.nextAcceptedPlayerHit;
+        }
+        // A scripted lock is complete immunity: cancel before downstream on-hit
+        // plugins can spend procs or cooldowns on a hit that cannot hurt the boss.
+        if (controllerVictim && controllerDamageLocked()) return true;
+        Player attacker = damagePlayer(event);
+        if (attacker == null) return false;
+        if (isLinkedPlayerDamage(event, attacker)
+                || PlayerDamageEventSupport.isYknRpgSyntheticDamage()) {
+            preApprovedPlayerDamageEvents.add(event);
+            return false;
+        }
+        if (event.getDamage() <= 0.0) return false;
+        if (!acceptPlayerHit(gate, attacker)) return true;
+        preApprovedPlayerDamageEvents.add(event);
+        return false;
+    }
+
+    public void clearPlayerDamageApproval(EntityDamageEvent event) {
+        preApprovedPlayerDamageEvents.remove(event);
+    }
+
     public boolean handleIncomingDamage(EntityDamageEvent event) {
+        boolean preApproved = preApprovedPlayerDamageEvents.contains(event);
         if (dying || pendingPhase != null) {
             event.setCancelled(true);
             return true;
@@ -1935,6 +1988,11 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
             return true;
         }
         Player attacker = damagePlayer(event);
+        if (attacker != null && event.getDamage() > 0.0 && !preApproved
+                && !acceptPlayerHit(nextAcceptedPlayerHit, attacker)) {
+            event.setCancelled(true);
+            return true;
+        }
         if (attacker != null) {
             event.setDamage(plugin.slayer().outgoingDamage(attacker, event.getDamage(), executeWindow()));
         }
@@ -1949,12 +2007,12 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
                         12, 0.4, 0.45, 0.4, 0.02, Color.fromRGB(170, 35, 230), 1.5f);
                 attacker.sendActionBar(plugin.messages().component("boss.endsun-guard.furnace-health",
                         "health", Math.round(ultimateFurnaceHealth),
-                        "max", Math.round(plugin.endsunGuardSettings().ultimate().furnaceHealth())));
+                        "max", Math.round(ultimateFurnaceMaximumHealth())));
                 if (ultimateFurnaceHealth <= 0.0) finishBlackSun(true);
             }
             return true;
         }
-        if (skill == Skill.SHIELD && attacker != null) {
+        if (damage > 0.0 && skill == Skill.SHIELD && attacker != null) {
             double dot = attackerDirectionDot(attacker);
             EndsunGuardSettings.Shield shield = plugin.endsunGuardSettings().shield();
             if (dot >= shield.frontDotThreshold()) {
@@ -2088,6 +2146,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
 
     private void enterPhaseTwo() {
         reactiveHitCount = 0;
+        nextAcceptedPlayerHit.clear();
         long transitionTicks = Math.max(PHASE_TRANSITION_TICKS,
                 plugin.endsunGuardSettings().phases().transitionInvulnerabilityTicks());
         phaseInvulnerableUntil = age + transitionTicks;
@@ -2105,6 +2164,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
 
     private void enterPhaseThree() {
         reactiveHitCount = 0;
+        nextAcceptedPlayerHit.clear();
         long transitionTicks = Math.max(PHASE_TRANSITION_TICKS,
                 plugin.endsunGuardSettings().phases().transitionInvulnerabilityTicks());
         phaseInvulnerableUntil = age + transitionTicks;
@@ -2138,6 +2198,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         UUID id = event.getEntity().getUniqueId();
         TwinBody twin = twinBody(id);
         if (twin != null) {
+            boolean preApproved = preApprovedPlayerDamageEvents.contains(event);
             double finalDamage = Math.max(0.0, event.getFinalDamage());
             double baseDamage = Math.max(0.0, event.getDamage());
             double amount = finalDamage > 0.0 ? finalDamage : baseDamage;
@@ -2145,6 +2206,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
             boolean rangedOrMagic = isRangedOrMagic(event, twin);
             event.setCancelled(true);
             if (amount <= 0.0 || attacker == null) return true;
+            if (!preApproved && !acceptPlayerHit(twin.nextAcceptedPlayerHit, attacker)) return true;
             applyTwinDamage(twin, attacker, rangedOrMagic, amount);
             return true;
         }
@@ -2157,21 +2219,11 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         return soulReflections.contains(id);
     }
 
-    private void queueTwinHitBoxDamage(TwinBody twin, UUID causingEntityId, boolean indirect, float rawDamage) {
-        if (!Float.isFinite(rawDamage) || rawDamage <= 0.0f || causingEntityId == null) return;
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (skill != Skill.TWIN_ECLIPSE || twin.defeated || twin.entity == null
-                    || !twin.entity.isValid() || twinBody(twin.entity.getUniqueId()) != twin) return;
-            Player attacker = damagePlayer(Bukkit.getEntity(causingEntityId));
-            if (attacker == null || !validTarget(attacker, plugin.endsunGuardSettings().bossbarRange())) return;
-            applyTwinDamage(twin, attacker, indirect, rawDamage);
-        });
-    }
-
     private void applyTwinDamage(TwinBody twin, Player attacker, boolean rangedOrMagic, double rawAmount) {
             double amount = Math.max(0.0,
                     plugin.slayer().outgoingDamage(attacker, rawAmount, executeWindow()));
-            boolean allowed = twin.type == TwinType.SUN ? !rangedOrMagic : rangedOrMagic;
+            boolean allowed = challengeParticipantCount() <= 1
+                    || (twin.type == TwinType.SUN ? !rangedOrMagic : rangedOrMagic);
             if (!allowed) {
                 attacker.sendActionBar(plugin.messages().component(
                         twin.type == TwinType.SUN ? "boss.endsun-guard.twins-sun-immune"
@@ -2353,6 +2405,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         }
         entity.remove();
         totemHits.remove(id);
+        if (!totemHits.isEmpty()) return;
         crownEndsAt = 0L;
         solarFlames.clear();
         removeTotems();
@@ -2552,17 +2605,18 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     }
 
     private void strikeBossWithSunWheel(SunWheel wheel, Entity entity, EndsunGuardSettings.Sunfall settings) {
+        double armorBreakDamage = scaledEncounterValue(settings.armorBreakDamage());
         entity.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, entity.getLocation(), 1);
         entity.getWorld().playSound(entity.getLocation(), Sound.BLOCK_ANVIL_LAND, 2.5f, 0.65f);
         if (skill == Skill.SHIELD) {
-            shieldEnergy = Math.max(0.0, shieldEnergy - settings.armorBreakDamage());
-            announce("boss.endsun-guard.sunwheel-shield-hit", "damage", Math.round(settings.armorBreakDamage()));
+            shieldEnergy = Math.max(0.0, shieldEnergy - armorBreakDamage);
+            announce("boss.endsun-guard.sunwheel-shield-hit", "damage", Math.round(armorBreakDamage));
         } else if (skill == Skill.BLACK_SUN) {
-            ultimateFurnaceHealth = Math.max(0.0, ultimateFurnaceHealth - settings.armorBreakDamage());
-            announce("boss.endsun-guard.sunwheel-furnace-hit", "damage", Math.round(settings.armorBreakDamage()));
+            ultimateFurnaceHealth = Math.max(0.0, ultimateFurnaceHealth - armorBreakDamage);
+            announce("boss.endsun-guard.sunwheel-furnace-hit", "damage", Math.round(armorBreakDamage));
             if (ultimateFurnaceHealth <= 0.0) finishBlackSun(true);
         } else {
-            setCurrentPhaseHealth(Math.max(1.0, health() - settings.armorBreakDamage() * 0.35));
+            setCurrentPhaseHealth(Math.max(1.0, health() - armorBreakDamage * 0.35));
             updateBossBar();
             beginStagger(null);
             announce("boss.endsun-guard.sunwheel-armor-break");
@@ -2706,8 +2760,9 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
 
     public void handleAttack(EntityDamageByEntityEvent event) {
         if (event.getEntity() instanceof Player player && player.getFireTicks() > 0) {
-            shieldEnergy = Math.min(plugin.endsunGuardSettings().shield().maximumEnergy(),
-                    shieldEnergy + plugin.endsunGuardSettings().crown().shieldHealOnBurningHit());
+            shieldEnergy = Math.min(scaledShieldMaximumEnergy(),
+                    shieldEnergy + scaledEncounterValue(
+                            plugin.endsunGuardSettings().crown().shieldHealOnBurningHit()));
             ParticleCompat.spawnDust(controller.getWorld(), controller.getLocation().add(0, 1.2, 0),
                     6, 0.35, 0.4, 0.35, 0.02, Color.fromRGB(255, 175, 35), 1.1f);
         }
@@ -2742,11 +2797,18 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         return Math.max(1L, Math.round(ticks / multiplier));
     }
 
+    private long castTimingTicks(String key, double fallbackSeconds) {
+        double configured = plugin.getConfig().getDouble(
+                "endsun-guard.abilities.cast-timing." + key, fallbackSeconds);
+        return Math.max(1L, Math.round(Math.max(0.05, configured) * 20.0));
+    }
+
     private void damage(Player player, double base) {
         if (!validTarget(player, plugin.endsunGuardSettings().bossbarRange())) return;
         dealingSkillDamage = true;
         try {
-            player.damage(plugin.slayer().incomingDamage(player, scaledDamage(base)), skillDamageSource);
+            plugin.slayer().dealSkillDamage(player,
+                    plugin.slayer().incomingDamage(player, scaledDamage(base)), skillDamageSource);
         } finally {
             dealingSkillDamage = false;
         }
@@ -2761,105 +2823,60 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     }
 
     private void registerReactiveHit(Player attacker) {
-        if (!canTriggerReactiveCast() || !validTarget(attacker, plugin.endsunGuardSettings().bossbarRange())) return;
+        if (!canTriggerReactiveCast() || age < nextReactiveCastAt
+                || !validTarget(attacker, plugin.endsunGuardSettings().bossbarRange())) return;
         reactiveHitCount++;
-        if (reactiveHitCount < 3) return;
+        if (reactiveHitCount < reactiveTeleportHitCount() * challengeParticipantCount()) return;
+        if (!triggerReactiveCast(attacker)) return;
         reactiveHitCount = 0;
-        triggerReactiveCast(attacker);
+        nextReactiveCastAt = age + REACTIVE_CAST_COOLDOWN_TICKS;
     }
 
     private boolean canTriggerReactiveCast() {
         return !dying && skill != Skill.BLACK_SUN && skill != Skill.PHASE_TRANSITION
                 && skill != Skill.ECLIPSE_TRANSFORM && skill != Skill.TWIN_ECLIPSE
-                && skill != Skill.ENTRANCE && skill != Skill.DEATH;
+                && skill != Skill.STAGGER && skill != Skill.ENTRANCE && skill != Skill.DEATH;
     }
 
-    private void triggerReactiveCast(Player attacker) {
-        if (!canTriggerReactiveCast()) return;
-        interruptCurrentSkillForReactiveCast();
-        teleportBehindPlayer(controller, attacker);
+    private boolean triggerReactiveCast(Player attacker) {
+        if (!canTriggerReactiveCast() || !teleportBehindPlayer(controller, attacker)) return false;
         controller.setTarget(attacker);
-        selectSkill(true);
-        if (skill != Skill.NONE) skillStartedAt = age - instantReleaseOffset(skill);
-    }
-
-    private void interruptCurrentSkillForReactiveCast() {
-        if (skill == Skill.BLACK_SUN) return;
-        if (skill == Skill.SCYTHE_ECHO) removeEchoClones();
-        if (skill == Skill.SUNFALL) sunfallTargets.clear();
-        if (skill == Skill.EDICT) pendingEdict = null;
-        judgementTarget = null;
-        outwardHits.clear();
-        returnHits.clear();
-        suffocationStacks.clear();
-        nextSandHit.clear();
-        skill = Skill.NONE;
-        skillStartedAt = 0L;
-        controller.setAI(true);
-        controller.setVelocity(new Vector());
+        if (skill == Skill.NONE && age >= nextSkillAt) selectSkill();
+        return true;
     }
 
     private void registerTwinReactiveHit(TwinBody body, Player attacker) {
-        if (body == null || body.defeated || attacker == null) return;
+        if (body == null || body.defeated || attacker == null || body.activeSkill == Skill.STAGGER
+                || age < body.nextReactiveCastAt) return;
         body.reactiveHitCount++;
-        if (body.reactiveHitCount < 3) return;
+        int assignedParticipants = Math.max(1, (challengeParticipantCount() + 1) / 2);
+        if (body.reactiveHitCount < reactiveTeleportHitCount() * assignedParticipants) return;
+        if (!teleportBehindPlayer(body.entity, attacker)) return;
         body.reactiveHitCount = 0;
-        interruptTwinSkillForReactiveCast(body);
-        teleportBehindPlayer(body.entity, attacker);
+        body.nextReactiveCastAt = age + REACTIVE_CAST_COOLDOWN_TICKS;
         body.entity.setTarget(attacker);
-        selectTwinSkill(body, true);
-        if (body.activeSkill != Skill.NONE) {
-            body.skillStartedAt = age - instantReleaseOffset(body.activeSkill);
-        }
+        if (body.activeSkill == Skill.NONE && age >= body.nextSkillAt) selectTwinSkill(body);
     }
 
-    private void interruptTwinSkillForReactiveCast(TwinBody body) {
-        body.activeSkill = Skill.NONE;
-        body.skillStartedAt = 0L;
-        body.skillTargetId = null;
-        body.skillEnd = null;
-        body.outwardHits.clear();
-        body.returnHits.clear();
-        body.nextSandHit.clear();
-        body.suffocationStacks.clear();
-        body.skillLocations.clear();
-        body.skillDirections.clear();
-        body.pendingEdict = null;
-        body.echoTeleports = 0;
-        body.replayed = false;
-        body.entity.setAI(true);
-        body.entity.setVelocity(new Vector());
+    private int reactiveTeleportHitCount() {
+        return Math.max(1, plugin.getConfig().getInt(
+                "endsun-guard.reactive-teleport.hit-count", 5));
     }
 
-    private long instantReleaseOffset(Skill selected) {
-        EndsunGuardSettings settings = plugin.endsunGuardSettings();
-        long releaseTick = switch (selected) {
-            case JUDGEMENT -> settings.judgement().telegraphTicks();
-            case CROWN_CAST -> 28L;
-            case SOUL_DRAIN -> settings.furnace().drainChannelTicks();
-            case SCYTHE_ECHO -> 4L;
-            case NETHER_BOUNDARY -> settings.netherBoundary().castTicks();
-            case SUNFALL -> settings.sunfall().telegraphTicks();
-            case EDICT -> settings.edict().telegraphTicks();
-            case TWIN_ECLIPSE -> 18L;
-            default -> 1L;
-        };
-        return Math.max(0L, releaseTick - 1L);
-    }
-
-    private void teleportBehindPlayer(Entity entity, Player player) {
+    private boolean teleportBehindPlayer(Entity entity, Player player) {
         Location origin = entity.getLocation().clone();
         Location destination = findPositionBehind(player);
-        if (destination == null) return;
+        if (destination == null) return false;
         Vector towardPlayer = player.getLocation().toVector().subtract(destination.toVector()).setY(0.0);
         if (towardPlayer.lengthSquared() > 0.001) destination.setDirection(towardPlayer);
-        entity.teleport(destination);
+        if (!entity.teleport(destination)) return false;
         entity.setVelocity(new Vector());
         origin.getWorld().spawnParticle(Particle.REVERSE_PORTAL, origin.clone().add(0, 1.0, 0),
                 36, 0.55, 0.85, 0.55, 0.08);
         destination.getWorld().spawnParticle(Particle.REVERSE_PORTAL, destination.clone().add(0, 1.0, 0),
                 36, 0.55, 0.85, 0.55, 0.08);
         destination.getWorld().playSound(destination, Sound.ENTITY_ENDERMAN_TELEPORT, 2.0f, 0.72f);
+        return true;
     }
 
     private Location findPositionBehind(Player player) {
@@ -2896,9 +2913,11 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
                 updateBossBar();
             }
         }
-        controller.setInvulnerable(pendingPhase != null || phaseHealthLockUntil > 0L || age <= phaseInvulnerableUntil
+        boolean damageLocked = pendingPhase != null || phaseHealthLockUntil > 0L || age <= phaseInvulnerableUntil
                 || skill == Skill.PHASE_TRANSITION || skill == Skill.ECLIPSE_TRANSFORM
-                || skill == Skill.TWIN_ECLIPSE || skill == Skill.ENTRANCE || skill == Skill.DEATH);
+                || skill == Skill.TWIN_ECLIPSE || skill == Skill.ENTRANCE || skill == Skill.DEATH;
+        controller.setInvulnerable(damageLocked);
+        if (!damageLocked) controller.setNoDamageTicks(0);
     }
 
     private void refillCurrentPhaseHealth() {
@@ -2940,9 +2959,16 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     }
 
     private void finishSkill() {
+        Skill finished = skill;
         skill = Skill.NONE;
         skillStartedAt = 0L;
         judgementTarget = null;
+        double fallbackDelay = finished == Skill.ENTRANCE ? 1.5
+                : phase == Phase.P3 ? 0.8 : 1.2;
+        String delayKey = finished == Skill.ENTRANCE ? "initial-delay-seconds"
+                : phase == Phase.P3 ? "phase-three-delay-seconds"
+                : "phase-one-two-delay-seconds";
+        nextSkillAt = age + castTimingTicks(delayKey, fallbackDelay);
         controller.setAI(true);
         acquireTarget();
         playLoop(idleAnimation());
@@ -3037,6 +3063,17 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         return null;
     }
 
+    private boolean isLinkedPlayerDamage(EntityDamageEvent event, Player attacker) {
+        UUID victimId = event.getEntity().getUniqueId();
+        UUID attackerId = attacker.getUniqueId();
+        for (EntityDamageEvent active : preApprovedPlayerDamageEvents) {
+            if (!active.getEntity().getUniqueId().equals(victimId)) continue;
+            Player activeAttacker = damagePlayer(active);
+            if (activeAttacker != null && activeAttacker.getUniqueId().equals(attackerId)) return true;
+        }
+        return false;
+    }
+
     private double attackerDirectionDot(Player attacker) {
         return attackerDirectionDot(controller, attacker);
     }
@@ -3046,6 +3083,26 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         Vector toward = attacker.getLocation().toVector().subtract(defender.getLocation().toVector()).setY(0);
         if (forward.lengthSquared() < 0.001 || toward.lengthSquared() < 0.001) return 0.0;
         return forward.normalize().dot(toward.normalize());
+    }
+
+    private int challengeParticipantCount() {
+        return Math.max(1, plugin.endsunArenaManager()
+                .challengeParticipantCount(id(), controller.getWorld()));
+    }
+
+    private boolean acceptPlayerHit(Map<UUID, Long> nextAcceptedHits, Player attacker) {
+        UUID attackerId = attacker.getUniqueId();
+        if (age < nextAcceptedHits.getOrDefault(attackerId, Long.MIN_VALUE)) return false;
+        nextAcceptedHits.put(attackerId, age + plugin.endsunGuardSettings().playerHitCooldownTicks());
+        return true;
+    }
+
+    private double scaledShieldMaximumEnergy() {
+        return scaledEncounterValue(plugin.endsunGuardSettings().shield().maximumEnergy());
+    }
+
+    private double scaledEncounterValue(double baseValue) {
+        return Math.max(0.0, baseValue) * encounterHealthMultiplier;
     }
 
     public void applySettings(boolean preserveHealthFraction) {
@@ -3061,10 +3118,15 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         applyMovementSpeed();
         controller.setAI(skill == Skill.NONE && !dying);
         controller.setInvisible(true);
+        controller.setMaximumNoDamageTicks(0);
+        controller.setNoDamageTicks(0);
         controller.customName(legacyComponent(settings.displayName()));
         controller.setCustomNameVisible(false);
         setCurrentPhaseHealth(Math.max(1.0, Math.min(newMaximum, newMaximum * fraction)));
-        shieldEnergy = Math.min(shieldEnergy, settings.shield().maximumEnergy());
+        double maximumShieldEnergy = scaledShieldMaximumEnergy();
+        shieldEnergy = Math.min(shieldEnergy, maximumShieldEnergy);
+        if (twinSun != null) twinSun.shieldEnergy = Math.min(twinSun.shieldEnergy, maximumShieldEnergy);
+        if (twinNight != null) twinNight.shieldEnergy = Math.min(twinNight.shieldEnergy, maximumShieldEnergy);
         ensureModel();
         if (skill == Skill.NONE && !dying) acquireTarget();
     }
@@ -3244,6 +3306,8 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         edictCooldowns.clear();
         edictLastLocations.clear();
         damageThreat.clear();
+        nextAcceptedPlayerHit.clear();
+        preApprovedPlayerDamageEvents.clear();
         teamBarrierActive = false;
         teamFragmentProgress = 0;
         removeFragmentEntities();

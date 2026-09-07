@@ -2,6 +2,7 @@ package cn.yknboss.slayer;
 
 import cn.yknboss.YknBossPlugin;
 import dev.aurelium.auraskills.api.AuraSkillsApi;
+import dev.aurelium.auraskills.api.ability.Abilities;
 import dev.aurelium.auraskills.api.ability.CustomAbility;
 import dev.aurelium.auraskills.api.item.ItemContext;
 import dev.aurelium.auraskills.api.registry.NamespacedId;
@@ -11,14 +12,20 @@ import dev.aurelium.auraskills.api.user.SkillsUser;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.damage.DamageSource;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
 import java.io.File;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-final class AuraSlayerService implements SlayerService {
+final class AuraSlayerService implements SlayerService, Listener {
 
     private static final String NAMESPACE = "yknboss";
     private static final String BONE_DRAGON = "bone_dragon";
@@ -33,6 +40,7 @@ final class AuraSlayerService implements SlayerService {
     private final CustomAbility regroup;
     private final CustomAbility finalInsight;
     private final CustomSkill slayer;
+    private final ThreadLocal<UUID> scriptedDamageTarget = new ThreadLocal<>();
 
     AuraSlayerService(YknBossPlugin plugin) {
         this.plugin = plugin;
@@ -59,6 +67,7 @@ final class AuraSlayerService implements SlayerService {
                 .description(text("slayer.skill.description"))
                 .build();
         registry.registerSkill(slayer);
+        plugin.getServer().getPluginManager().registerEvents(this, plugin);
         plugin.getLogger().info("已向 AuraSkills 注册讨伐职业（最高 100 级）。");
     }
 
@@ -75,6 +84,45 @@ final class AuraSlayerService implements SlayerService {
     public double incomingDamage(Player player, double damage) {
         if (damage <= 0.0 || !isOfficialCombatant(player)) return damage;
         return damage * Math.max(0.0, 1.0 - value(player, bossResistance) / 100.0);
+    }
+
+    @Override
+    public void dealSkillDamage(Player player, double damage, DamageSource source) {
+        UUID previousTarget = scriptedDamageTarget.get();
+        scriptedDamageTarget.set(player.getUniqueId());
+        try {
+            player.damage(Math.max(0.0, damage), source);
+        } finally {
+            if (previousTarget == null) scriptedDamageTarget.remove();
+            else scriptedDamageTarget.set(previousTarget);
+        }
+    }
+
+    /**
+     * AuraSkills treats every non-player LivingEntity as an ordinary mob and
+     * therefore applies Mob Master to the Husk/Zombie controllers used by boss
+     * scripts. Only undo that one multiplier while a scripted ability is being
+     * delivered. Toughness, Shielding, Immunity, YknRpg defense, class defense,
+     * Slayer resistance and vanilla armor remain in the normal event pipeline.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void restoreScriptedBossDamage(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof Player player)
+                || !(event.getDamager() instanceof LivingEntity)
+                || event.getDamager() instanceof Player
+                || !player.getUniqueId().equals(scriptedDamageTarget.get())
+                || !plugin.getConfig().getBoolean(
+                "boss-skill-damage.ignore-aura-mob-master", true)
+                || !Abilities.MOB_MASTER.isEnabled()) return;
+
+        SkillsUser user = api.getUser(player.getUniqueId());
+        if (!user.isLoaded() || !user.hasSkillPermission(Abilities.MOB_MASTER.getSkill())) return;
+        int level = user.getAbilityLevel(Abilities.MOB_MASTER);
+        if (level <= 0) return;
+        double mobMasterReduction = Abilities.MOB_MASTER.getValue(level) / 100.0;
+        double remainingDamage = 1.0 - mobMasterReduction;
+        if (remainingDamage <= 0.0 || remainingDamage >= 1.0) return;
+        event.setDamage(event.getDamage() / remainingDamage);
     }
 
     @Override

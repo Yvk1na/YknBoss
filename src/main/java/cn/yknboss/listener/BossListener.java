@@ -46,7 +46,16 @@ public final class BossListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onBossPlayerDamageGate(EntityDamageByEntityEvent event) {
+        if (plugin.boneDragonManager().rejectRateLimitedPlayerDamage(event)
+                || plugin.endsunGuardManager().rejectRateLimitedPlayerDamage(event)
+                || plugin.endWitchManager().rejectRateLimitedPlayerDamage(event)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEndsunAuxiliaryDamage(EntityDamageEvent event) {
         if (plugin.endWitchManager().handleAuxiliaryDamage(event)) return;
         plugin.endsunGuardManager().handleAuxiliaryDamage(event);
@@ -78,7 +87,7 @@ public final class BossListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBossAttack(EntityDamageByEntityEvent event) {
         if (plugin.endsunGuardManager().isBoss(event.getDamager())) {
             plugin.endsunGuardManager().handleAttack(event);
@@ -153,6 +162,13 @@ public final class BossListener implements Listener {
         if (plugin.boneDragonManager().enforceControllerDamageLock(event)) return;
         if (plugin.endsunGuardManager().enforceControllerDamageLock(event)) return;
         plugin.endWitchManager().enforceControllerDamageLock(event);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void clearBossPlayerDamageApproval(EntityDamageEvent event) {
+        plugin.boneDragonManager().clearPlayerDamageApproval(event);
+        plugin.endsunGuardManager().clearPlayerDamageApproval(event);
+        plugin.endWitchManager().clearPlayerDamageApproval(event);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

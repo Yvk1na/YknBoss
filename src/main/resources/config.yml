@@ -1,4 +1,4 @@
-config-version: 48
+config-version: 54
 
 # 三种 Boss 的所有副本实例统一存放在服务端 bossmap 文件夹中。
 # world-name 仍作为各 Boss 实例的名称前缀，例如 bossmap/bone_dragon_arena_01。
@@ -11,12 +11,15 @@ bone-dragon-arena:
   floor-y: 80
   seed: 761923846123
   summon-duration-seconds: 3
-  # 单人基础限时；每多一名实际参战玩家会扣除下方配置的秒数。
-  challenge-duration-seconds: 900
-  challenge-duration-reduction-per-extra-player-seconds: 60
-  minimum-challenge-duration-seconds: 60
-  # 当前三阶段血量均视为单人血量；每多一名实际参战玩家增加此百分比。
-  boss-health-increase-per-extra-player-percent: 10.0
+  # 所有人数统一使用 10 分钟限时；正常目标为约 7 分钟，保留约 3 分钟容错。
+  challenge-duration-seconds: 600
+  challenge-duration-reduction-per-extra-player-seconds: 0
+  minimum-challenge-duration-seconds: 600
+  # 三阶段配置值均是单人血量；列表第 1~10 项分别对应 1~10 人。
+  # 表外人数才使用该增量继续外推；当前队伍上限为 10 人。
+  boss-health-increase-per-extra-player-percent: 75.0
+  boss-health-multipliers-by-player-count: [1.00, 1.50, 2.25, 3.00, 3.75, 4.50, 5.25, 6.00, 6.75, 7.50]
+  # 以中期合格玩家输出估算，1~10 人正常通关中心均约为 7:00。
   return-delay-seconds: 30
   respawn-delay-seconds: 10
   # true：服务器启动后创建全部实例；false：首次执行 /yknboss enter 时按需创建。
@@ -30,12 +33,15 @@ endsun-guard-arena:
   floor-y: 80
   seed: 908172635441
   summon-duration-seconds: 4
-  # 单人基础限时；每多一名实际参战玩家会扣除下方配置的秒数。
-  challenge-duration-seconds: 900
-  challenge-duration-reduction-per-extra-player-seconds: 60
-  minimum-challenge-duration-seconds: 60
-  # 当前三阶段血量均视为单人血量；每多一名实际参战玩家增加此百分比。
-  boss-health-increase-per-extra-player-percent: 10.0
+  # 所有人数统一使用 10 分钟限时；正常目标为约 7 分钟，保留约 3 分钟容错。
+  challenge-duration-seconds: 600
+  challenge-duration-reduction-per-extra-player-seconds: 0
+  minimum-challenge-duration-seconds: 600
+  # 三阶段配置值均是单人血量；列表第 1~10 项分别对应 1~10 人。
+  # 表外人数才使用该增量继续外推；当前队伍上限为 10 人。
+  boss-health-increase-per-extra-player-percent: 100.0
+  boss-health-multipliers-by-player-count: [1.00, 2.00, 3.00, 4.00, 5.00, 6.00, 7.00, 8.00, 9.00, 10.00]
+  # 按此前顶级双人实测输出校准，1~10 人正常通关中心均约为 7:00。
   return-delay-seconds: 30
   respawn-delay-seconds: 10
   # true：服务器启动后创建全部实例；false：队长首次进入时按需创建并在开场前重置。
@@ -49,12 +55,15 @@ end-witch-arena:
   floor-y: 80
   seed: 170315912487
   summon-duration-seconds: 4
-  # 单人基础限时；每多一名实际参战玩家会扣除下方配置的秒数。
-  challenge-duration-seconds: 900
-  challenge-duration-reduction-per-extra-player-seconds: 60
-  minimum-challenge-duration-seconds: 60
-  # 当前三阶段血量均视为单人血量；每多一名实际参战玩家增加此百分比。
-  boss-health-increase-per-extra-player-percent: 10.0
+  # 所有人数统一使用 10 分钟限时；正常目标为约 7 分钟，保留约 3 分钟容错。
+  challenge-duration-seconds: 600
+  challenge-duration-reduction-per-extra-player-seconds: 0
+  minimum-challenge-duration-seconds: 600
+  # 三阶段配置值均是单人血量；列表第 1~10 项分别对应 1~10 人。
+  # 表外人数才使用该增量继续外推；当前队伍上限为 10 人。
+  boss-health-increase-per-extra-player-percent: 75.0
+  boss-health-multipliers-by-player-count: [1.00, 1.50, 2.25, 3.00, 3.75, 4.50, 5.25, 6.00, 6.75, 7.50]
+  # 以后期合格玩家输出估算，1~10 人正常通关中心均约为 7:00。
   return-delay-seconds: 30
   respawn-delay-seconds: 10
   # true：服务器启动后创建全部实例；false：队长首次进入时按需创建并在开场前重置。
@@ -90,17 +99,24 @@ slayer:
       name: "终末洞察"
       description: "最终阶段首领生命值不高于 20% 时，造成的伤害额外提高 {value}%。"
       info: "+{value}% 斩杀阶段伤害"
+
   rewards:
     bone-dragon-xp: 1200
     endsun-guard-xp: 1800
     end-witch-xp: 2200
     minimum-damage-share: 0.01
 
+boss-skill-damage:
+  # Boss 脚本技能并非普通怪物攻击；不再额外触发 AuraSkills 的 Mob Master 减伤。
+  # YknRpg 防御、Aura 韧性/盾御/免疫、讨伐抗性、职业减伤和原版护甲仍然有效。
+  ignore-aura-mob-master: true
+
 endsun-guard:
   display-name: "&6&l烬日冥卫·阿努赫"
-  attack-damage: 26.0
-  # 可配置范围 0-100000；需同时确保服务端允许对应的护甲属性上限。
-  armor: 22.0
+  # 伤害均是进入 YknRpg 防御、AuraSkills 减伤和原版护甲前的原始值。
+  attack-damage: 400.0
+  # Paper 1.21.10 的原版 ARMOR 属性硬上限为 30。
+  armor: 24.0
   movement-speed: 0.32
   attack-speed-multiplier: 1.2
   follow-range: 48.0
@@ -116,6 +132,13 @@ endsun-guard:
     id: "endsun_anuhe"
     # 1.5 已烘焙进资源模型，插件会换算为运行时 1.0，避免各骨骼缩放不同步。
     scale: 1.5
+  damage-intake:
+    # 关闭原版“目标全局无敌帧”后改为每名玩家独立限速；10 tick = 每人每秒最多 2 次满额伤害。
+    # 队友不会互相吞伤；YknRpg 的追加/主动技能会独立放行，物理连点仍不能刷固定伤害。
+    player-hit-cooldown-ticks: 10
+  reactive-teleport:
+    # 每名分配到本体/双生体的参战玩家所需有效受击次数；达到后传送到攻击者身后。
+    hit-count: 5
   eclipse:
     maximum: 100.0
     # 玩家受到的每点火焰伤害增加的日蚀值。
@@ -130,10 +153,10 @@ endsun-guard:
     speed-multiplier: 1.25
   phases:
     # 三个阶段使用独立血池；上一阶段清空后，新血条会重新补满。
-    # 三阶段默认总血量为 1024：40% / 30% / 30%。
-    p1-health: 409.6
-    p2-health: 307.2
-    p3-health: 307.2
+    # 单人基准总血量 101496；10 人为 380610 / 338320 / 296030。
+    p1-health: 38061.0
+    p2-health: 33832.0
+    p3-health: 29603.0
     transition-invulnerability-seconds: 1.0
     # 阶段伤害加成同时影响普通攻击、技能和双生蚀影攻击。
     phase-two-damage-bonus-percent: 15.0
@@ -142,6 +165,12 @@ endsun-guard:
     phase-three-movement-speed-multiplier: 1.2
     phase-three-ultimate-delay-seconds: 15.0
   abilities:
+    # 让普通攻击和走位穿插在技能之间，避免技能提示连续刷屏。
+    cast-timing:
+      initial-delay-seconds: 1.5
+      retry-delay-seconds: 0.5
+      phase-one-two-delay-seconds: 1.2
+      phase-three-delay-seconds: 0.8
     scythe-return:
       cooldown-seconds: 6.5
       range: 16.0
@@ -149,14 +178,14 @@ endsun-guard:
       outward-seconds: 0.9
       return-delay-seconds: 0.6
       return-seconds: 0.75
-      outward-damage: 18.0
-      return-damage: 36.0
+      outward-damage: 350.0
+      return-damage: 700.0
       knockback: 1.35
       soul-fracture-seconds: 6.0
     amethyst-judgement:
       cooldown-seconds: 14.0
       telegraph-seconds: 3.0
-      damage: 34.0
+      damage: 900.0
       maximum-eclipse-bonus-percent: 100.0
       shadow-radius: 3.0
     soul-crown:
@@ -165,15 +194,16 @@ endsun-guard:
       flame-count: 6
       flame-speed: 0.14
       flame-hit-radius: 1.4
-      flame-damage: 8.0
+      flame-damage: 160.0
       fire-ticks: 80
-      shield-heal-on-burning-hit: 20.0
+      shield-heal-on-burning-hit: 97.0
       totem-count: 3
       totem-hits: 3
     solar-shield:
       cooldown-seconds: 12.0
       duration-seconds: 6.0
-      maximum-energy: 200.0
+      # 单人护盾能量；副本内按开战人数对应的遭遇血量倍率同步放大。
+      maximum-energy: 1208.0
       minimum-cast-energy-percent: 35.0
       front-dot-threshold: 0.15
       rear-dot-threshold: -0.25
@@ -182,25 +212,26 @@ endsun-guard:
     heart-furnace:
       reflection-spawn-interval-seconds: 12.0
       maximum-reflections: 10
-      reflection-health: 24.0
+      reflection-health: 725.0
       drain-cooldown-seconds: 15.0
       drain-channel-seconds: 2.2
       consume-range: 32.0
       damage-increase-percent-per-soul: 5.0
       maximum-damage-increase-percent: 50.0
-      shield-restore-per-soul: 25.0
+      shield-restore-per-soul: 12.0
     black-sun:
       duration-seconds: 15.0
       start-radius: 30.0
       end-radius: 4.0
-      collapse-damage: 12.0
+      collapse-damage: 500.0
       # 兼容旧配置保留；黑日葬仪失败时会直接清空生命值，无视护甲与吸收生命。
       execution-damage: 1000.0
       fragment-count: 9
       # 全队共享收集进度；达到数量后所有参战玩家共同受屏障保护。
       fragment-cost: 6
       barrier-radius: 3.5
-      furnace-health: 160.0
+      # 单人约需 6 秒击破，给 15 秒仪式保留收集残片与站位时间。
+      furnace-health: 967.0
     sand-funeral:
       cooldown-seconds: 20.0
       duration-seconds: 9.0
@@ -209,7 +240,7 @@ endsun-guard:
       gap-width-degrees: 42.0
       hit-radius: 1.8
       damage-interval-seconds: 0.7
-      damage: 8.0
+      damage: 120.0
       suffocation-per-hit: 1
       maximum-suffocation: 8
     scythe-echo:
@@ -219,48 +250,58 @@ endsun-guard:
       replay-delay-seconds: 2.5
       slash-range: 8.0
       hit-radius: 2.0
-      damage: 24.0
+      damage: 550.0
     nether-boundary:
       cooldown-seconds: 16.0
       cast-seconds: 1.0
       duration-seconds: 10.0
       return-delay-seconds: 3.0
       half-length: 24.0
-      return-damage: 12.0
+      return-damage: 300.0
     sunfall:
       cooldown-seconds: 24.0
       telegraph-seconds: 2.5
       wheel-count: 5
       duration-seconds: 14.0
-      impact-damage: 22.0
+      impact-damage: 550.0
       radiation-radius: 4.5
-      radiation-damage: 5.0
+      radiation-damage: 100.0
       radiation-interval-seconds: 1.0
-      armor-break-damage: 45.0
+      # 会按遭遇倍率增长，确保不同人数下对圣盾与炉心造成相同比例的机制伤害。
+      armor-break-damage: 1208.0
     pharaoh-edict:
       cooldown-seconds: 26.0
       telegraph-seconds: 2.0
       duration-seconds: 12.0
       weapon-hit-threshold: 3
-      reflect-damage: 10.0
+      reflect-damage: 250.0
       movement-threshold-seconds: 2.5
-      movement-damage: 16.0
+      movement-damage: 550.0
       gaze-dot-threshold: 0.92
       gaze-threshold-seconds: 2.0
-      petrify-damage: 18.0
+      petrify-damage: 600.0
       group-radius: 3.5
-      group-damage: 14.0
+      group-damage: 400.0
       trigger-cooldown-seconds: 2.0
     twin-eclipse:
       cooldown-seconds: 50.0
-      body-health: 180.0
+      # 单人约需 9 秒击破一具，使两具均可在 20 秒复活窗口内处理。
+      body-health: 1450.0
       revival-window-seconds: 20.0
       success-damage-percent: 15.0
 
 end-witch:
   display-name: "&2&l终焉之魔女·伊芙蕾雅"
-  attack-damage: 18.0
-  armor: 14.0
+  # 伤害均是进入 YknRpg 防御、AuraSkills 减伤和原版护甲前的原始值。
+  attack-damage: 1000.0
+  # Paper 1.21.10 的原版 ARMOR 属性硬上限。
+  armor: 30.0
+  damage-intake:
+    # 关闭原版“目标全局无敌帧”后改为每名玩家独立限速；队友同一 tick 的攻击互不吞伤。
+    # YknRpg 的追加/主动技能不会占用这个物理攻击窗口。
+    player-hit-cooldown-ticks: 10
+    # 理论阶段血量超过 500000 时，实体血量仍封顶 500000，超出部分折算为受伤系数以保持目标战斗时长。
+    preserve-effective-health-above-cap: true
   movement-speed: 0.29
   # 普通技能推进、追击响应和战斗动作速度；世界终焉、沉默、转阶段不受影响。
   action-speed-multiplier: 1.25
@@ -271,6 +312,7 @@ end-witch:
   reactive-teleport:
     # 累计受到指定次数的有效玩家伤害后，瞬移到本次攻击者约指定距离外。
     # 瞬移只改变位置，不中断当前普通技能吟唱；世界终焉期间完全禁用。
+    # 此值是单人命中数；副本内会乘开战人数，避免多人连续触发瞬移。
     hit-count: 3
     distance: 8.0
   combat-feedback:
@@ -283,9 +325,10 @@ end-witch:
     scale: 1.0
   phases:
     # 三阶段是相互独立的血池；每项可设 1-500000，转阶段会锁血、无敌并回满新阶段。
-    p1-health: 420.0
-    p2-health: 420.0
-    p3-health: 420.0
+    # 单人基准总血量 241436；理论倍率超出上限时由 damage-intake 补偿，实际单阶段永不超过 500000。
+    p1-health: 83574.0
+    p2-health: 80479.0
+    p3-health: 77383.0
     transition-invulnerability-seconds: 2.8
     # 阶段伤害加成同时影响普通攻击、技能与蚀痕爆炸。
     phase-two-damage-bonus-percent: 20.0
@@ -297,6 +340,7 @@ end-witch:
     phase-one-per-second: 1.0
     phase-two-per-second: 1.5
     phase-three-per-second: 1.0
+    # 范围技能命中多名玩家时按开战人数归一，不会因队伍人数而加速终焉刻度。
     skill-hit-minimum: 2
     skill-hit-maximum: 5
     crystal-reduction: 20.0
@@ -305,7 +349,7 @@ end-witch:
   marks:
     damage-increase-percent-per-stack: 5.0
     second-stack-slow-percent: 10.0
-    third-stack-explosion-damage: 10.0
+    third-stack-explosion-damage: 500.0
     cleanse-gauge-increase: 5.0
     cleanse-circle-distance: 18.0
     cleanse-circle-radius: 2.4
@@ -316,59 +360,60 @@ end-witch:
       retry-delay-seconds: 0.5
       phase-one-two-delay-seconds: 1.4
       phase-three-delay-seconds: 0.9
-      repeated-skill-delay-seconds: 0.4
+      # 青色文字存活时会衔接另一种可用技能，不再复读刚释放的技能。
+      chain-skill-delay-seconds: 0.55
     shield-disable-seconds: 5.0
     forbidden-exchange:
       cooldown-seconds: 8.0
     magic-arrows:
       cooldown-seconds: 6.0
       speed: 0.75
-      damage: 16.0
+      damage: 700.0
     black-skirt:
       cooldown-seconds: 9.0
-      damage: 14.0
+      damage: 650.0
     fate-gaze:
       cooldown-seconds: 10.0
       range: 48.0
-      damage: 24.0
+      damage: 1100.0
     witch-blink:
       cooldown-seconds: 8.0
-      damage: 18.0
-      echo-damage: 20.0
+      damage: 850.0
+      echo-damage: 750.0
     witch-scissors:
       cooldown-seconds: 12.0
       radius: 2.2
-      health: 35.0
-      damage: 34.0
+      health: 3500.0
+      damage: 1600.0
     silent-chant:
       cooldown-seconds: 18.0
-      rune-health: 18.0
+      rune-health: 1800.0
       red-damage-bonus-percent: 25.0
       green-heal-percent: 4.0
     funeral-flowers:
       cooldown-seconds: 16.0
       count: 6
-      health: 24.0
+      health: 2400.0
       drain-radius: 5.0
-      drain-damage: 5.0
-      boss-heal: 12.0
+      drain-damage: 200.0
+      boss-heal: 800.0
     soul-pawn:
       cooldown-seconds: 17.0
       health-percent: 30.0
-      crystal-health: 32.0
+      crystal-health: 3200.0
       health-per-extra-player-percent: 25.0
     time-funeral:
       cooldown-seconds: 18.0
-      damage: 28.0
+      damage: 1200.0
     doom-link:
       cooldown-seconds: 18.0
       minimum-distance: 5.0
       maximum-distance: 13.0
-      damage: 10.0
+      damage: 500.0
     night-meteors:
       cooldown-seconds: 17.0
       count: 7
-      damage: 26.0
+      damage: 1000.0
     negate-healing:
       cooldown-seconds: 20.0
       trigger-amount: 4.0
@@ -376,35 +421,42 @@ end-witch:
       damage-multiplier: 1.0
     shadow-cage:
       cooldown-seconds: 18.0
-      pillar-health: 20.0
-      explosion-damage: 25.0
+      pillar-health: 2500.0
+      explosion-damage: 1200.0
     heaven-inversion:
       cooldown-seconds: 22.0
       safe-radius: 3.0
-      damage: 35.0
+      damage: 1700.0
     seven-ends:
       cooldown-seconds: 28.0
-      damage: 24.0
+      damage: 1200.0
     world-end:
-      # 必杀技每场最多一次，因此没有普通技能冷却；吟唱和护盾均可调整。
+      # 刻度每次满值都可发动；破盾后退回指定刻度，之后可再次进入破盾循环。
       channel-seconds: 12.0
       # 单人使用基础吟唱时间；每多达到这组人数，吟唱减少 channel-reduction-seconds。
       players-per-channel-reduction: 2
-      channel-reduction-seconds: 1.0
-      minimum-channel-seconds: 1.0
-      shield-health: 240.0
+      # 统一为 12 秒，避免多人护盾同比增长后反而缩短破盾窗口。
+      channel-reduction-seconds: 0.0
+      minimum-channel-seconds: 12.0
+      shield-health: 2463.0
       # 每名参战玩家为护盾提供基础值的这个倍数，至少仍使用一份基础值。
-      shield-player-scaling: 0.65
+      shield-player-scaling: 0.75
+      gauge-after-shield-break: 30.0
 
 bone-dragon:
   display-name: "&f&l☠ 骨龙"
-  attack-damage: 32.0
-  # 可配置范围 0-100000；需同时确保服务端允许对应的护甲属性上限。
-  armor: 22.0
+  # 伤害均是进入 YknRpg 防御、AuraSkills 减伤和原版护甲前的原始值。
+  attack-damage: 180.0
+  # Paper 1.21.10 的原版 ARMOR 属性硬上限为 30。
+  armor: 18.0
   knockback-resistance: 1.0
   follow-range: 80.0
   bossbar-range: 96.0
   experience: 0
+  damage-intake:
+    # 本体和召唤物均按玩家独立限速；10 tick = 每人每秒最多 2 次满额伤害。
+    # 队友不会互相吞伤；YknRpg 技能独立放行，物理连点仍不能刷固定伤害。
+    player-hit-cooldown-ticks: 10
   minions:
     # 召唤骷髅与颅骨追踪弹生成的骷髅侍卫共用此存活数量上限；0 表示禁止召唤。
     max-alive: 20
@@ -425,17 +477,22 @@ bone-dragon:
     # 命中模型的 b_head_hitbox 头部碰撞骨骼时，额外增加的伤害百分比。
     head-damage-increase-percent: 30.0
   abilities:
+    # 技能之间保留短暂普攻/走位窗口，并在暂时无可用技能时降低轮询频率。
+    cast-timing:
+      retry-delay-seconds: 0.5
+      phase-one-delay-seconds: 1.0
+      phase-two-three-delay-seconds: 0.8
     # 玩家举盾承受骨龙技能时，盾牌进入冷却的时间（原版斧类破盾为约 5 秒）。
     shield-disable-seconds: 5.0
     tail-sweep:
       cooldown-seconds: 8.0
       range: 8.0
-      damage: 28.0
+      damage: 260.0
       knockback: 1.6
     grab:
       cooldown-seconds: 18.0
       capture-range: 4.5
-      capture-damage: 10.0
+      capture-damage: 120.0
       lift-height: 10.0
     skull-barrage:
       cooldown-seconds: 22.0
@@ -444,23 +501,25 @@ bone-dragon:
       turn-rate: 0.09
       lifetime-seconds: 12.0
       hit-radius: 1.35
-      damage: 12.0
+      damage: 160.0
       guard-count: 3
-      guard-health: 36.0
-      guard-damage: 9.0
+      # 召唤物生命均为单人基准，副本内使用与 Boss 相同的多人血量倍率。
+      guard-health: 493.0
+      guard-damage: 110.0
     fire-breath:
       cooldown-seconds: 16.0
       duration-seconds: 5.0
       range: 22.0
       cone-degrees: 32.0
-      damage: 8.0
+      damage: 55.0
       damage-interval-ticks: 10
       fire-ticks: 80
     summon-skeletons:
       cooldown-seconds: 24.0
       count: 8
-      health: 40.0
-      damage: 10.0
+      # 单人基准生命；副本内按遭遇血量倍率放大。
+      health: 739.0
+      damage: 110.0
     death-summon:
       # 每个阶段开始时自动召唤一次“死之统治者”。
       min-count: 1
@@ -468,7 +527,9 @@ bone-dragon:
       heal-interval-seconds: 10.0
       # 每名存活的死之统治者每次恢复当前阶段已损失生命值的百分比。
       missing-health-heal-percent: 5.0
-      ruler-health: 60.0
+      # 单人基准生命；副本内按遭遇血量倍率放大。
+      ruler-health: 1540.0
+      # 兼容键；死之统治者是无攻击 AI 的回血目标，当前不会使用此值。
       ruler-damage: 12.0
     skeleton-absorb:
       # 每次普通召唤或阶段死之召唤结束后，最多吸收的普通骷髅数量；不包含死之统治者。
@@ -489,19 +550,19 @@ bone-dragon:
       fall-height: 18.0
       fall-ticks: 20
       impact-radius: 3.25
-      damage: 24.0
+      damage: 420.0
     bone-prison:
       cooldown-seconds: 20.0
       target-count: 3
       radius: 2.5
       height: 5
       duration-seconds: 10.0
-      damage: 10.0
+      damage: 160.0
       launch-velocity: 1.05
     bone-spikes:
       # 仅在 P2/P3 使用，以骨龙为中心逐圈向外爆发骨刺。
       cooldown-seconds: 14.0
-      damage: 22.0
+      damage: 300.0
       radius: 12.0
       rings: 4
       spikes-per-ring: 18
@@ -511,20 +572,22 @@ bone-dragon:
       duration-seconds: 2.5
       speed: 1.15
       hit-radius: 3.5
-      damage: 26.0
+      damage: 340.0
       knockback: 1.8
   phases:
     # 三个阶段是互相独立的生命池；上一阶段清空后，下一阶段血条会重新补满。
     # 每个阶段可配置范围均为 1-500000；需同时把服务端最大生命属性上限设为 500000。
-    p1-health: 409.6
-    p2-health: 307.2
-    p3-health: 307.2
+    # 单人基准总血量 92376；10 人为 254033 / 230940 / 207848。
+    p1-health: 33871.0
+    p2-health: 30792.0
+    p3-health: 27713.0
     # P1→P2 与 P2→P3 的新阶段血条补满后，继续保持锁血无敌的时间。
     transition-invulnerability-seconds: 0.5
     p3-auto-summon-seconds: 60.0
   stun:
     # 骨龙坠地后的眩晕持续时间，可热加载修改。
     duration-seconds: 8.0
+    # 单人所需命中数；副本内乘开战人数，保持各人数下的触发频率一致。
     p1-hit-count: 10
   death-animation:
     duration-seconds: 5.0
@@ -894,7 +957,7 @@ messages:
       aux:
         rune_red: "&c伤害文字"
         rune_green: "&a治愈文字"
-        rune_cyan: "&b复诵文字"
+        rune_cyan: "&b连缀文字"
         scissors: "&8魔女裁决"
         flower: "&8葬仪魔花"
         soul: "&3灵魂结晶"
@@ -904,7 +967,7 @@ messages:
       final-wave: "&f终末轮转：黑裙冲击波范围扩大！"
       world-end-start: "&0&l必杀——世界终焉！&a在 {seconds} 秒内击破终焉护盾！"
       world-end-shield: "&2终焉护盾 &f{health}"
-      world-end-broken: "&a&l终焉护盾破碎！伊芙蕾雅虚弱 8 秒，刻度回退至 80。"
+      world-end-broken: "&a&l终焉护盾破碎！伊芙蕾雅虚弱 8 秒，刻度回退至 {gauge}。"
       world-end-failed: "&0&l终焉仪式完成——世界归于寂静。"
       skill:
         forbidden_exchange: "&d禁忌交换！&7相同法阵标记的目标即将交换位置与负面状态。"

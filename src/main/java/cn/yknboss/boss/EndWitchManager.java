@@ -159,6 +159,16 @@ public final class EndWitchManager {
         return boss != null && boss.handleIncomingDamage(event);
     }
 
+    public boolean rejectRateLimitedPlayerDamage(EntityDamageByEntityEvent event) {
+        EndWitch boss = bosses.get(event.getEntity().getUniqueId());
+        return boss != null && boss.rejectRateLimitedPlayerDamage(event);
+    }
+
+    public void clearPlayerDamageApproval(EntityDamageEvent event) {
+        EndWitch boss = bosses.get(event.getEntity().getUniqueId());
+        if (boss != null) boss.clearPlayerDamageApproval(event);
+    }
+
     public boolean enforceControllerDamageLock(EntityDamageEvent event) {
         EndWitch boss = bosses.get(event.getEntity().getUniqueId());
         return boss != null && boss.enforceControllerDamageLock(event);
