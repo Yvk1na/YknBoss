@@ -3274,6 +3274,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     public void remove() {
         bossBar.removeAll();
         cleanupAuxiliary();
+        damageThreat.clear();
         closeModel();
         controller.remove();
     }
@@ -3281,6 +3282,7 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
     public void detach() {
         bossBar.removeAll();
         cleanupAuxiliary();
+        damageThreat.clear();
         closeModel();
     }
 
@@ -3305,7 +3307,6 @@ public final class EndsunGuard implements ScriptedBossLifecycle {
         edictCounters.clear();
         edictCooldowns.clear();
         edictLastLocations.clear();
-        damageThreat.clear();
         nextAcceptedPlayerHit.clear();
         preApprovedPlayerDamageEvents.clear();
         teamBarrierActive = false;

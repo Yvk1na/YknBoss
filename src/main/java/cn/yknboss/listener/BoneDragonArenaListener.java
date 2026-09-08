@@ -1,6 +1,7 @@
 package cn.yknboss.listener;
 
 import cn.yknboss.YknBossPlugin;
+import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -48,15 +49,22 @@ public final class BoneDragonArenaListener implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTeleportComplete(PlayerTeleportEvent event) {
+        Bukkit.getScheduler().runTask(plugin, () -> syncRaidSidebar(event.getPlayer()));
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         plugin.arenaManager().handleJoin(event.getPlayer());
         plugin.endsunArenaManager().handleJoin(event.getPlayer());
         plugin.endWitchArenaManager().handleJoin(event.getPlayer());
+        Bukkit.getScheduler().runTask(plugin, () -> syncRaidSidebar(event.getPlayer()));
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        plugin.raidSidebar().detach(event.getPlayer());
         plugin.arenaManager().handleQuit(event.getPlayer());
         plugin.endsunArenaManager().handleQuit(event.getPlayer());
         plugin.endWitchArenaManager().handleQuit(event.getPlayer());
@@ -96,6 +104,7 @@ public final class BoneDragonArenaListener implements Listener {
         plugin.arenaManager().handlePlayerRespawn(event);
         plugin.endsunArenaManager().handlePlayerRespawn(event);
         plugin.endWitchArenaManager().handlePlayerRespawn(event);
+        Bukkit.getScheduler().runTask(plugin, () -> syncRaidSidebar(event.getPlayer()));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -204,5 +213,12 @@ public final class BoneDragonArenaListener implements Listener {
         if (plugin.endWitchArenaManager().isArenaWorld(world)) return "witch-arena." + suffix;
         if (plugin.endsunArenaManager().isArenaWorld(world)) return "endsun-arena." + suffix;
         return "arena." + suffix;
+    }
+
+    private void syncRaidSidebar(Player player) {
+        if (plugin.arenaManager().syncRaidSidebar(player)
+                || plugin.endsunArenaManager().syncRaidSidebar(player)
+                || plugin.endWitchArenaManager().syncRaidSidebar(player)) return;
+        plugin.raidSidebar().detach(player);
     }
 }

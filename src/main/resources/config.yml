@@ -1,4 +1,4 @@
-config-version: 54
+config-version: 59
 
 # 三种 Boss 的所有副本实例统一存放在服务端 bossmap 文件夹中。
 # world-name 仍作为各 Boss 实例的名称前缀，例如 bossmap/bone_dragon_arena_01。
@@ -15,11 +15,11 @@ bone-dragon-arena:
   challenge-duration-seconds: 600
   challenge-duration-reduction-per-extra-player-seconds: 0
   minimum-challenge-duration-seconds: 600
-  # 三阶段配置值均是单人血量；列表第 1~10 项分别对应 1~10 人。
-  # 表外人数才使用该增量继续外推；当前队伍上限为 10 人。
-  boss-health-increase-per-extra-player-percent: 75.0
-  boss-health-multipliers-by-player-count: [1.00, 1.50, 2.25, 3.00, 3.75, 4.50, 5.25, 6.00, 6.75, 7.50]
-  # 以中期合格玩家输出估算，1~10 人正常通关中心均约为 7:00。
+  # 三阶段配置值均是单人血量；列表保留 1~10 人线性倍率，当前只使用前 1~6 项。
+  # 表外人数才按每多一人 +100% 外推；当前队伍上限为 6 人。
+  boss-health-increase-per-extra-player-percent: 100.0
+  boss-health-multipliers-by-player-count: [1.00, 2.00, 3.00, 4.00, 5.00, 6.00, 7.00, 8.00, 9.00, 10.00]
+  # AuraSkills 50 级中期玩家按最终 DPS 158 估算，1~6 人线性组队正常通关中心均约为 7:00。
   return-delay-seconds: 30
   respawn-delay-seconds: 10
   # true：服务器启动后创建全部实例；false：首次执行 /yknboss enter 时按需创建。
@@ -37,11 +37,11 @@ endsun-guard-arena:
   challenge-duration-seconds: 600
   challenge-duration-reduction-per-extra-player-seconds: 0
   minimum-challenge-duration-seconds: 600
-  # 三阶段配置值均是单人血量；列表第 1~10 项分别对应 1~10 人。
-  # 表外人数才使用该增量继续外推；当前队伍上限为 10 人。
+  # 三阶段配置值均是单人血量；列表保留 1~10 人线性倍率，当前只使用前 1~6 项。
+  # 表外人数才使用该增量继续外推；当前队伍上限为 6 人。
   boss-health-increase-per-extra-player-percent: 100.0
   boss-health-multipliers-by-player-count: [1.00, 2.00, 3.00, 4.00, 5.00, 6.00, 7.00, 8.00, 9.00, 10.00]
-  # 按此前顶级双人实测输出校准，1~10 人正常通关中心均约为 7:00。
+  # AuraSkills 80 级中后期玩家按最终 DPS 286 估算，1~6 人线性组队正常通关中心均约为 7:00。
   return-delay-seconds: 30
   respawn-delay-seconds: 10
   # true：服务器启动后创建全部实例；false：队长首次进入时按需创建并在开场前重置。
@@ -59,11 +59,11 @@ end-witch-arena:
   challenge-duration-seconds: 600
   challenge-duration-reduction-per-extra-player-seconds: 0
   minimum-challenge-duration-seconds: 600
-  # 三阶段配置值均是单人血量；列表第 1~10 项分别对应 1~10 人。
-  # 表外人数才使用该增量继续外推；当前队伍上限为 10 人。
-  boss-health-increase-per-extra-player-percent: 75.0
-  boss-health-multipliers-by-player-count: [1.00, 1.50, 2.25, 3.00, 3.75, 4.50, 5.25, 6.00, 6.75, 7.50]
-  # 以后期合格玩家输出估算，1~10 人正常通关中心均约为 7:00。
+  # 三阶段配置值均是单人血量；列表保留 1~10 人线性倍率，当前只使用前 1~6 项。
+  # 表外人数才按每多一人 +100% 外推；当前队伍上限为 6 人。
+  boss-health-increase-per-extra-player-percent: 100.0
+  boss-health-multipliers-by-player-count: [1.00, 2.00, 3.00, 4.00, 5.00, 6.00, 7.00, 8.00, 9.00, 10.00]
+  # AuraSkills 100 级后期玩家按最终 DPS 639 估算，1~6 人线性组队正常通关中心均约为 7:00。
   return-delay-seconds: 30
   respawn-delay-seconds: 10
   # true：服务器启动后创建全部实例；false：队长首次进入时按需创建并在开场前重置。
@@ -71,50 +71,47 @@ end-witch-arena:
 
 party:
   # 单支队伍和单个副本允许的最大人数。
-  max-members: 10
+  max-members: 6
   invite-expire-seconds: 60
 
-slayer:
-  skill:
-    name: "讨伐"
-    description: "仅通过完成 YknBoss 正式副本获得经验，提升针对首领战的被动能力。"
-  abilities:
-    hunting-instinct:
-      name: "猎杀本能"
-      description: "在 YknBoss 正式副本中，对首领造成的伤害提高 {value}%。"
-      info: "+{value}% 首领伤害"
-    boss-resistance:
-      name: "首领抗性"
-      description: "在 YknBoss 正式副本中，受到首领攻击的伤害降低 {value}%。"
-      info: "-{value}% 首领伤害"
-    last-stand:
-      name: "绝境反击"
-      description: "生命值不高于 35% 时，对 YknBoss 首领造成的伤害额外提高 {value}%。"
-      info: "+{value}% 低血量伤害"
-    regroup:
-      name: "重整旗鼓"
-      description: "YknBoss 正式副本中的复活等待时间缩短 {value} 秒，最低仍为 6 秒。"
-      info: "-{value} 秒复活等待"
-    final-insight:
-      name: "终末洞察"
-      description: "最终阶段首领生命值不高于 20% 时，造成的伤害额外提高 {value}%。"
-      info: "+{value}% 斩杀阶段伤害"
+# 进入正式副本后临时替换右侧原计分板；玩家离开、掉线或插件关闭时恢复原计分板。
+raid-sidebar:
+  enabled: true
+  # 血量与面板重绘频率。10 tick = 每 0.5 秒刷新一次。
+  update-interval-ticks: 10
+  # 每名玩家和团队 DPS 采用最近这段时间的滑动平均。
+  dps-window-seconds: 10.0
+  # 超长玩家名会以省略号截断，确保六人队伍仍保持紧凑。
+  name-max-length: 10
+  # 标题、顶部信息行会优先原样继承玩家进入副本前的侧边栏；以下内容仅在原侧边栏不存在时使用。
+  title: "&b&lSKYBLOCK"
+  top-line: "&7副本挑战"
+  # 底部优先继承原侧边栏最后一行；不存在时使用此地址。
+  footer-line: "&emc.infnetwork.net"
+  separator: "&8&m--------------------"
+  time-line: "&b⌛ &f挑战剩余 &b&l{time}"
+  team-dps-line: "&6⚔ &f团队 DPS &e&l{dps}"
+  blank-line: "&r"
+  team-heading: "&d❤ &f队伍状态"
+  member-line: "{status} &f{name} &c{health}&7/{max-health}❤ &8│ &e{dps}⚔"
+  down-member-line: "&c✖ &f{name} &c倒地 &8│ &e{dps}⚔"
+  offline-member-line: "&8○ &7{name} &8离线"
+  waiting-time: "&e等待召唤"
+  settling-time: "&e结算中"
+  victory-time: "&6挑战完成"
+  failed-time: "&c挑战失败"
 
+slayer:
   rewards:
     bone-dragon-xp: 1200
     endsun-guard-xp: 1800
     end-witch-xp: 2200
     minimum-damage-share: 0.01
 
-boss-skill-damage:
-  # Boss 脚本技能并非普通怪物攻击；不再额外触发 AuraSkills 的 Mob Master 减伤。
-  # YknRpg 防御、Aura 韧性/盾御/免疫、讨伐抗性、职业减伤和原版护甲仍然有效。
-  ignore-aura-mob-master: true
-
 endsun-guard:
   display-name: "&6&l烬日冥卫·阿努赫"
   # 伤害均是进入 YknRpg 防御、AuraSkills 减伤和原版护甲前的原始值。
-  attack-damage: 400.0
+  attack-damage: 275.0
   # Paper 1.21.10 的原版 ARMOR 属性硬上限为 30。
   armor: 24.0
   movement-speed: 0.32
@@ -153,10 +150,10 @@ endsun-guard:
     speed-multiplier: 1.25
   phases:
     # 三个阶段使用独立血池；上一阶段清空后，新血条会重新补满。
-    # 单人基准总血量 101496；10 人为 380610 / 338320 / 296030。
-    p1-health: 38061.0
-    p2-health: 33832.0
-    p3-health: 29603.0
+    # 单人基准总血量 101500；6 人为 228600 / 202800 / 177600，单阶段均不超过 500000。
+    p1-health: 38100.0
+    p2-health: 33800.0
+    p3-health: 29600.0
     transition-invulnerability-seconds: 1.0
     # 阶段伤害加成同时影响普通攻击、技能和双生蚀影攻击。
     phase-two-damage-bonus-percent: 15.0
@@ -178,14 +175,14 @@ endsun-guard:
       outward-seconds: 0.9
       return-delay-seconds: 0.6
       return-seconds: 0.75
-      outward-damage: 350.0
-      return-damage: 700.0
+      outward-damage: 240.0
+      return-damage: 485.0
       knockback: 1.35
       soul-fracture-seconds: 6.0
     amethyst-judgement:
       cooldown-seconds: 14.0
       telegraph-seconds: 3.0
-      damage: 900.0
+      damage: 620.0
       maximum-eclipse-bonus-percent: 100.0
       shadow-radius: 3.0
     soul-crown:
@@ -194,7 +191,7 @@ endsun-guard:
       flame-count: 6
       flame-speed: 0.14
       flame-hit-radius: 1.4
-      flame-damage: 160.0
+      flame-damage: 110.0
       fire-ticks: 80
       shield-heal-on-burning-hit: 97.0
       totem-count: 3
@@ -223,7 +220,7 @@ endsun-guard:
       duration-seconds: 15.0
       start-radius: 30.0
       end-radius: 4.0
-      collapse-damage: 500.0
+      collapse-damage: 345.0
       # 兼容旧配置保留；黑日葬仪失败时会直接清空生命值，无视护甲与吸收生命。
       execution-damage: 1000.0
       fragment-count: 9
@@ -240,7 +237,7 @@ endsun-guard:
       gap-width-degrees: 42.0
       hit-radius: 1.8
       damage-interval-seconds: 0.7
-      damage: 120.0
+      damage: 85.0
       suffocation-per-hit: 1
       maximum-suffocation: 8
     scythe-echo:
@@ -250,22 +247,22 @@ endsun-guard:
       replay-delay-seconds: 2.5
       slash-range: 8.0
       hit-radius: 2.0
-      damage: 550.0
+      damage: 380.0
     nether-boundary:
       cooldown-seconds: 16.0
       cast-seconds: 1.0
       duration-seconds: 10.0
       return-delay-seconds: 3.0
       half-length: 24.0
-      return-damage: 300.0
+      return-damage: 205.0
     sunfall:
       cooldown-seconds: 24.0
       telegraph-seconds: 2.5
       wheel-count: 5
       duration-seconds: 14.0
-      impact-damage: 550.0
+      impact-damage: 380.0
       radiation-radius: 4.5
-      radiation-damage: 100.0
+      radiation-damage: 70.0
       radiation-interval-seconds: 1.0
       # 会按遭遇倍率增长，确保不同人数下对圣盾与炉心造成相同比例的机制伤害。
       armor-break-damage: 1208.0
@@ -274,14 +271,14 @@ endsun-guard:
       telegraph-seconds: 2.0
       duration-seconds: 12.0
       weapon-hit-threshold: 3
-      reflect-damage: 250.0
+      reflect-damage: 170.0
       movement-threshold-seconds: 2.5
-      movement-damage: 550.0
+      movement-damage: 380.0
       gaze-dot-threshold: 0.92
       gaze-threshold-seconds: 2.0
-      petrify-damage: 600.0
+      petrify-damage: 415.0
       group-radius: 3.5
-      group-damage: 400.0
+      group-damage: 275.0
       trigger-cooldown-seconds: 2.0
     twin-eclipse:
       cooldown-seconds: 50.0
@@ -293,7 +290,7 @@ endsun-guard:
 end-witch:
   display-name: "&2&l终焉之魔女·伊芙蕾雅"
   # 伤害均是进入 YknRpg 防御、AuraSkills 减伤和原版护甲前的原始值。
-  attack-damage: 1000.0
+  attack-damage: 580.0
   # Paper 1.21.10 的原版 ARMOR 属性硬上限。
   armor: 30.0
   damage-intake:
@@ -325,10 +322,10 @@ end-witch:
     scale: 1.0
   phases:
     # 三阶段是相互独立的血池；每项可设 1-500000，转阶段会锁血、无敌并回满新阶段。
-    # 单人基准总血量 241436；理论倍率超出上限时由 damage-intake 补偿，实际单阶段永不超过 500000。
-    p1-health: 83574.0
-    p2-health: 80479.0
-    p3-health: 77383.0
+    # 单人基准总血量 241200；6 人为 499800 / 483000 / 464400，单阶段均不超过 500000。
+    p1-health: 83300.0
+    p2-health: 80500.0
+    p3-health: 77400.0
     transition-invulnerability-seconds: 2.8
     # 阶段伤害加成同时影响普通攻击、技能与蚀痕爆炸。
     phase-two-damage-bonus-percent: 20.0
@@ -349,7 +346,7 @@ end-witch:
   marks:
     damage-increase-percent-per-stack: 5.0
     second-stack-slow-percent: 10.0
-    third-stack-explosion-damage: 500.0
+    third-stack-explosion-damage: 290.0
     cleanse-gauge-increase: 5.0
     cleanse-circle-distance: 18.0
     cleanse-circle-radius: 2.4
@@ -368,23 +365,23 @@ end-witch:
     magic-arrows:
       cooldown-seconds: 6.0
       speed: 0.75
-      damage: 700.0
+      damage: 405.0
     black-skirt:
       cooldown-seconds: 9.0
-      damage: 650.0
+      damage: 380.0
     fate-gaze:
       cooldown-seconds: 10.0
       range: 48.0
-      damage: 1100.0
+      damage: 640.0
     witch-blink:
       cooldown-seconds: 8.0
-      damage: 850.0
-      echo-damage: 750.0
+      damage: 490.0
+      echo-damage: 435.0
     witch-scissors:
       cooldown-seconds: 12.0
       radius: 2.2
       health: 3500.0
-      damage: 1600.0
+      damage: 930.0
     silent-chant:
       cooldown-seconds: 18.0
       rune-health: 1800.0
@@ -395,7 +392,7 @@ end-witch:
       count: 6
       health: 2400.0
       drain-radius: 5.0
-      drain-damage: 200.0
+      drain-damage: 130.0
       boss-heal: 800.0
     soul-pawn:
       cooldown-seconds: 17.0
@@ -404,16 +401,16 @@ end-witch:
       health-per-extra-player-percent: 25.0
     time-funeral:
       cooldown-seconds: 18.0
-      damage: 1200.0
+      damage: 700.0
     doom-link:
       cooldown-seconds: 18.0
       minimum-distance: 5.0
       maximum-distance: 13.0
-      damage: 500.0
+      damage: 290.0
     night-meteors:
       cooldown-seconds: 17.0
       count: 7
-      damage: 1000.0
+      damage: 580.0
     negate-healing:
       cooldown-seconds: 20.0
       trigger-amount: 4.0
@@ -422,14 +419,14 @@ end-witch:
     shadow-cage:
       cooldown-seconds: 18.0
       pillar-health: 2500.0
-      explosion-damage: 1200.0
+      explosion-damage: 700.0
     heaven-inversion:
       cooldown-seconds: 22.0
       safe-radius: 3.0
-      damage: 1700.0
+      damage: 985.0
     seven-ends:
       cooldown-seconds: 28.0
-      damage: 1200.0
+      damage: 700.0
     world-end:
       # 刻度每次满值都可发动；破盾后退回指定刻度，之后可再次进入破盾循环。
       channel-seconds: 12.0
@@ -446,7 +443,7 @@ end-witch:
 bone-dragon:
   display-name: "&f&l☠ 骨龙"
   # 伤害均是进入 YknRpg 防御、AuraSkills 减伤和原版护甲前的原始值。
-  attack-damage: 180.0
+  attack-damage: 150.0
   # Paper 1.21.10 的原版 ARMOR 属性硬上限为 30。
   armor: 18.0
   knockback-resistance: 1.0
@@ -487,12 +484,12 @@ bone-dragon:
     tail-sweep:
       cooldown-seconds: 8.0
       range: 8.0
-      damage: 260.0
+      damage: 215.0
       knockback: 1.6
     grab:
       cooldown-seconds: 18.0
       capture-range: 4.5
-      capture-damage: 120.0
+      capture-damage: 100.0
       lift-height: 10.0
     skull-barrage:
       cooldown-seconds: 22.0
@@ -501,25 +498,25 @@ bone-dragon:
       turn-rate: 0.09
       lifetime-seconds: 12.0
       hit-radius: 1.35
-      damage: 160.0
+      damage: 135.0
       guard-count: 3
       # 召唤物生命均为单人基准，副本内使用与 Boss 相同的多人血量倍率。
-      guard-health: 493.0
-      guard-damage: 110.0
+      guard-health: 360.0
+      guard-damage: 90.0
     fire-breath:
       cooldown-seconds: 16.0
       duration-seconds: 5.0
       range: 22.0
       cone-degrees: 32.0
-      damage: 55.0
+      damage: 50.0
       damage-interval-ticks: 10
       fire-ticks: 80
     summon-skeletons:
       cooldown-seconds: 24.0
       count: 8
       # 单人基准生命；副本内按遭遇血量倍率放大。
-      health: 739.0
-      damage: 110.0
+      health: 540.0
+      damage: 90.0
     death-summon:
       # 每个阶段开始时自动召唤一次“死之统治者”。
       min-count: 1
@@ -528,7 +525,7 @@ bone-dragon:
       # 每名存活的死之统治者每次恢复当前阶段已损失生命值的百分比。
       missing-health-heal-percent: 5.0
       # 单人基准生命；副本内按遭遇血量倍率放大。
-      ruler-health: 1540.0
+      ruler-health: 1125.0
       # 兼容键；死之统治者是无攻击 AI 的回血目标，当前不会使用此值。
       ruler-damage: 12.0
     skeleton-absorb:
@@ -550,19 +547,19 @@ bone-dragon:
       fall-height: 18.0
       fall-ticks: 20
       impact-radius: 3.25
-      damage: 420.0
+      damage: 350.0
     bone-prison:
       cooldown-seconds: 20.0
       target-count: 3
       radius: 2.5
       height: 5
       duration-seconds: 10.0
-      damage: 160.0
+      damage: 135.0
       launch-velocity: 1.05
     bone-spikes:
       # 仅在 P2/P3 使用，以骨龙为中心逐圈向外爆发骨刺。
       cooldown-seconds: 14.0
-      damage: 300.0
+      damage: 250.0
       radius: 12.0
       rings: 4
       spikes-per-ring: 18
@@ -572,15 +569,15 @@ bone-dragon:
       duration-seconds: 2.5
       speed: 1.15
       hit-radius: 3.5
-      damage: 340.0
+      damage: 280.0
       knockback: 1.8
   phases:
     # 三个阶段是互相独立的生命池；上一阶段清空后，下一阶段血条会重新补满。
     # 每个阶段可配置范围均为 1-500000；需同时把服务端最大生命属性上限设为 500000。
-    # 单人基准总血量 92376；10 人为 254033 / 230940 / 207848。
-    p1-health: 33871.0
-    p2-health: 30792.0
-    p3-health: 27713.0
+    # 单人基准总血量 58400；6 人为 128400 / 117000 / 105000，单阶段均不超过 500000。
+    p1-health: 21400.0
+    p2-health: 19500.0
+    p3-health: 17500.0
     # P1→P2 与 P2→P3 的新阶段血条补满后，继续保持锁血无敌的时间。
     transition-invulnerability-seconds: 0.5
     p3-auto-summon-seconds: 60.0

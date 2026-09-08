@@ -226,12 +226,6 @@ public final class BoneDragonArenaManager {
         if (party != null && !party.isLeader(requester.getUniqueId())) {
             throw new IllegalStateException(plugin.messages().plain("arena.error.create-leader-only"));
         }
-
-        ArenaInstance instance = instances.stream().filter(value -> !value.occupied()).findFirst()
-                .orElseThrow(() -> new IllegalStateException(plugin.messages().plain("arena.error.all-busy",
-                        "count", instances.size())));
-        World world = prepareInstanceForSession(instance, requester);
-        instance.sessionKey = sessionKey;
         List<UUID> members = party == null ? List.of(requester.getUniqueId()) : party.members();
         int maxMembers = plugin.partyManager().maxMembers();
         if (members.size() > maxMembers) {
@@ -241,6 +235,12 @@ public final class BoneDragonArenaManager {
                 || plugin.endWitchArenaManager().isPlayerInSession(member))) {
             throw new IllegalStateException(plugin.messages().plain("arena.error.party-member-in-other-instance"));
         }
+
+        ArenaInstance instance = instances.stream().filter(value -> !value.occupied()).findFirst()
+                .orElseThrow(() -> new IllegalStateException(plugin.messages().plain("arena.error.all-busy",
+                        "count", instances.size())));
+        World world = prepareInstanceForSession(instance, requester);
+        instance.sessionKey = sessionKey;
         instance.participants.addAll(members);
         for (UUID member : members) instanceByPlayer.put(member, instance);
 
@@ -367,7 +367,7 @@ public final class BoneDragonArenaManager {
             instance.returnPoints.putIfAbsent(player.getUniqueId(), ReturnPoint.of(player.getLocation()));
         }
         instanceByPlayer.put(player.getUniqueId(), instance);
-        player.teleport(playerSpawn(world));
+        if (player.teleport(playerSpawn(world))) syncRaidSidebar(player);
     }
 
     public boolean allowTeleport(Player player, Location from, Location to) {
@@ -424,6 +424,7 @@ public final class BoneDragonArenaManager {
         UUID playerId = player.getUniqueId();
         int respawnDelayTicks = plugin.slayer().respawnDelayTicks(player, settings.respawnDelayTicks());
         instance.deadPlayers.add(playerId);
+        plugin.raidSidebar().setDown(instance.sessionKey, playerId, true);
         instance.previousGameModes.putIfAbsent(playerId, player.getGameMode());
         instance.respawnReadyAt.put(playerId,
                 System.currentTimeMillis() + respawnDelayTicks * 50L);
@@ -482,6 +483,7 @@ public final class BoneDragonArenaManager {
     private void revivePlayer(ArenaInstance instance, UUID playerId) {
         cancelRespawnTask(instance, playerId);
         instance.deadPlayers.remove(playerId);
+        plugin.raidSidebar().setDown(instance.sessionKey, playerId, false);
         instance.respawnReadyAt.remove(playerId);
         GameMode gameMode = instance.previousGameModes.remove(playerId);
         Player player = Bukkit.getPlayer(playerId);
@@ -540,6 +542,8 @@ public final class BoneDragonArenaManager {
         instance.returnTask = null;
         instance.summoning = false;
         BoneDragon boss = arenaBoss(instance);
+        plugin.raidSidebar().finish(instance.sessionKey, false,
+                boss == null ? Map.of() : boss.damageContributions());
         if (boss != null) boss.remove();
         instance.activeBossId = null;
         finishSession(instance);
@@ -676,6 +680,7 @@ public final class BoneDragonArenaManager {
             plugin.slayer().awardVictory("bone_dragon", Set.copyOf(instance.eligibleParticipants),
                     boss.damageContributions());
         }
+        plugin.raidSidebar().finish(instance.sessionKey, true, boss.damageContributions());
         instance.activeBossId = null;
         int totalSeconds = settings.returnDelayTicks() / 20;
         broadcast(instance, plugin.messages().component("arena.victory", "seconds", totalSeconds));
@@ -731,6 +736,7 @@ public final class BoneDragonArenaManager {
             return;
         }
 
+        UUID completedSessionId = instance.sessionKey;
         for (UUID playerId : List.copyOf(instance.participants)) {
             instanceByPlayer.remove(playerId, instance);
             ReturnPoint point = instance.returnPoints.remove(playerId);
@@ -743,6 +749,7 @@ public final class BoneDragonArenaManager {
                 pendingOfflineReturns.put(playerId, point);
             }
         }
+        plugin.raidSidebar().close(completedSessionId);
         instance.participants.clear();
         instance.sessionKey = null;
 
@@ -846,6 +853,19 @@ public final class BoneDragonArenaManager {
 
     public boolean isPlayerInSession(UUID playerId) {
         return instanceByPlayer.containsKey(playerId);
+    }
+
+    /** Synchronizes the temporary sidebar only while the assigned player is physically in this instance. */
+    public boolean syncRaidSidebar(Player player) {
+        ArenaInstance instance = instanceByPlayer.get(player.getUniqueId());
+        if (instance == null || instance.sessionKey == null
+                || instanceForWorld(player.getWorld()) != instance) return false;
+        int initialDuration = instance.challengeDurationTicks > 0
+                ? instance.challengeDurationTicks
+                : settings.challengeDurationTicks(Math.max(1, instance.participants.size()));
+        plugin.raidSidebar().attach(instance.sessionKey, instance.participants,
+                instance.deadPlayers, player, initialDuration);
+        return true;
     }
 
     public World loadedWorld() {
@@ -1034,6 +1054,7 @@ public final class BoneDragonArenaManager {
         ArenaInstance instance = instanceForWorld(boss.location().getWorld());
         if (instance == null || instance.activeBossId == null || !instance.activeBossId.equals(boss.id())) return;
         cancelChallengeTimer(instance);
+        plugin.raidSidebar().settling(instance.sessionKey, boss.damageContributions());
     }
 
     private void startChallengeTimer(ArenaInstance instance) {
@@ -1044,6 +1065,9 @@ public final class BoneDragonArenaManager {
                 : settings.challengeDurationTicks(activeParticipantCount(instance, Bukkit.getWorld(instance.worldName)));
         instance.challengeDurationTicks = durationTicks;
         final int[] remainingTicks = {durationTicks};
+        BoneDragon activeBoss = arenaBoss(instance);
+        plugin.raidSidebar().start(instance.sessionKey, durationTicks,
+                activeBoss == null ? Map.of() : activeBoss.damageContributions());
         broadcast(instance, plugin.messages().component(
                 "arena.challenge-timer.started", "time", formatDuration(durationTicks / 20)));
         instance.challengeTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -1052,6 +1076,9 @@ public final class BoneDragonArenaManager {
                 return;
             }
             remainingTicks[0] -= 20;
+            BoneDragon currentBoss = arenaBoss(instance);
+            plugin.raidSidebar().update(instance.sessionKey, remainingTicks[0],
+                    currentBoss == null ? Map.of() : currentBoss.damageContributions());
             if (remainingTicks[0] <= 0) {
                 cancelChallengeTimer(instance);
                 failInstance(instance, plugin.messages().component(

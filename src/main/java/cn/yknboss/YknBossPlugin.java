@@ -24,6 +24,7 @@ import cn.yknboss.party.PartyManager;
 import cn.yknboss.party.PartySettings;
 import cn.yknboss.special.SpecialItemManager;
 import cn.yknboss.slayer.SlayerService;
+import cn.yknboss.ui.RaidSidebarService;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -66,6 +67,7 @@ public final class YknBossPlugin extends JavaPlugin {
     private SpecialItemManager specialItemManager;
     private BetterModelSupport betterModel;
     private SlayerService slayerService;
+    private RaidSidebarService raidSidebar;
 
     @Override
     public void onEnable() {
@@ -96,6 +98,7 @@ public final class YknBossPlugin extends JavaPlugin {
         endsunGuardManager = new EndsunGuardManager(this);
         endWitchManager = new EndWitchManager(this);
         partyManager = new PartyManager(this, partySettings);
+        raidSidebar = new RaidSidebarService(this);
         arenaManager = new BoneDragonArenaManager(this, arenaSettings);
         endsunArenaManager = new EndsunGuardArenaManager(this, endsunArenaSettings);
         endWitchArenaManager = new EndWitchArenaManager(this, endWitchArenaSettings);
@@ -127,6 +130,7 @@ public final class YknBossPlugin extends JavaPlugin {
             endsunGuardManager.tick();
             endWitchManager.tick();
             specialItemManager.tick();
+            raidSidebar.tick();
         }, 1L, 1L);
         getServer().getScheduler().runTask(this, () -> {
             boneDragonManager.discoverLoadedBosses();
@@ -218,6 +222,7 @@ public final class YknBossPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (raidSidebar != null) raidSidebar.shutdown();
         if (specialItemManager != null) specialItemManager.shutdown();
         if (arenaManager != null) arenaManager.shutdown();
         if (endsunArenaManager != null) endsunArenaManager.shutdown();
@@ -253,6 +258,13 @@ public final class YknBossPlugin extends JavaPlugin {
         endsunArenaManager.reload(endsunArenaSettings);
         endWitchArenaManager.reload(endWitchArenaSettings);
         partyManager.reload(partySettings);
+        raidSidebar.reload();
+        for (var player : getServer().getOnlinePlayers()) {
+            if (arenaManager.syncRaidSidebar(player)
+                    || endsunArenaManager.syncRaidSidebar(player)
+                    || endWitchArenaManager.syncRaidSidebar(player)) continue;
+            raidSidebar.detach(player);
+        }
         boneDragonManager.applySettingsToActiveBosses();
         endsunGuardManager.applySettingsToActiveBosses();
         endWitchManager.applySettingsToActiveBosses();
@@ -331,7 +343,7 @@ public final class YknBossPlugin extends JavaPlugin {
             if (!getConfig().isSet("bone-dragon-arena.respawn-delay-seconds")) {
                 getConfig().set("bone-dragon-arena.respawn-delay-seconds", 10);
             }
-            if (!getConfig().isSet("party.max-members")) getConfig().set("party.max-members", 10);
+            if (!getConfig().isSet("party.max-members")) getConfig().set("party.max-members", 6);
             if (!getConfig().isSet("party.invite-expire-seconds")) getConfig().set("party.invite-expire-seconds", 60);
         }
         if (version < 15) {
@@ -398,7 +410,7 @@ public final class YknBossPlugin extends JavaPlugin {
             if (!getConfig().isSet(spikesRoot + "spikes-per-ring")) getConfig().set(spikesRoot + "spikes-per-ring", 18);
             if (!getConfig().isSet(spikesRoot + "hit-radius")) getConfig().set(spikesRoot + "hit-radius", 1.75);
         }
-        if (version >= 54) return false;
+        if (version >= 59) return false;
         if (version < 23) {
             String absorbRoot = "bone-dragon.abilities.skeleton-absorb.";
             if (!getConfig().isSet(absorbRoot + "max-damage-increase-percent")) {
@@ -644,13 +656,27 @@ public final class YknBossPlugin extends JavaPlugin {
         if (version < 49) migrateCombatBalanceV49();
         if (version < 50) migrateCombatBalanceV50();
         if (version < 51) migrateEndsunEmpiricalBalanceV51();
-        if (version < 52 && !getConfig().isSet("boss-skill-damage.ignore-aura-mob-master")) {
-            getConfig().set("boss-skill-damage.ignore-aura-mob-master", true);
-        }
         if (version < 53) migrateCastingFlowV53();
         if (version < 54) migrateUniformSevenMinuteBalanceV54();
-        getConfig().set("config-version", 54);
-        getLogger().info("Boss 配置已迁移至 v54（1 至 10 人统一约 7 分钟通关曲线）。");
+        if (version < 56) {
+            String titlePath = "raid-sidebar.title";
+            String legacyTitle = "&b&l✦ 副本挑战 ✦";
+            if (!getConfig().isSet(titlePath)
+                    || legacyTitle.equals(getConfig().getString(titlePath))) {
+                getConfig().set(titlePath, "&b&lSKYBLOCK");
+            }
+        }
+        if (version < 57 && getConfig().getInt("party.max-members", 6) > 6) {
+            getConfig().set("party.max-members", 6);
+        }
+        if (version < 58) {
+            getConfig().set("slayer.skill", null);
+            getConfig().set("slayer.abilities", null);
+            getConfig().set("boss-skill-damage", null);
+        }
+        if (version < 59) migrateAuraSkillsBalanceV59();
+        getConfig().set("config-version", 59);
+        getLogger().info("Boss 配置已迁移至 v59（按新版 AuraSkills 数值重新平衡）。");
         return true;
     }
 
@@ -740,6 +766,77 @@ public final class YknBossPlugin extends JavaPlugin {
         setExplicitDefault("bone-dragon.damage-intake.player-hit-cooldown-ticks", 10);
         setExplicitDefault("end-witch.damage-intake.player-hit-cooldown-ticks", 10);
         setExplicitDefault("end-witch.damage-intake.preserve-effective-health-above-cap", true);
+    }
+
+    private void migrateAuraSkillsBalanceV59() {
+        java.util.List<Double> oldStandardMultipliers = java.util.List.of(
+                1.00, 1.50, 2.25, 3.00, 3.75, 4.50, 5.25, 6.00, 6.75, 7.50);
+        java.util.List<Double> linearMultipliers = java.util.List.of(
+                1.00, 2.00, 3.00, 4.00, 5.00, 6.00, 7.00, 8.00, 9.00, 10.00);
+        migrateKnownDefaultNumberList("bone-dragon-arena.boss-health-multipliers-by-player-count",
+                linearMultipliers, oldStandardMultipliers);
+        migrateKnownDefaultNumberList("end-witch-arena.boss-health-multipliers-by-player-count",
+                linearMultipliers, oldStandardMultipliers);
+        migrateKnownDefaultNumber("bone-dragon-arena.boss-health-increase-per-extra-player-percent",
+                100.0, 75.0);
+        migrateKnownDefaultNumber("end-witch-arena.boss-health-increase-per-extra-player-percent",
+                100.0, 75.0);
+
+        migrateKnownDefaultNumber("bone-dragon.phases.p1-health", 21_400.0, 33_871.0);
+        migrateKnownDefaultNumber("bone-dragon.phases.p2-health", 19_500.0, 30_792.0);
+        migrateKnownDefaultNumber("bone-dragon.phases.p3-health", 17_500.0, 27_713.0);
+        migrateKnownDefaultNumber("bone-dragon.attack-damage", 150.0, 180.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.tail-sweep.damage", 215.0, 260.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.grab.capture-damage", 100.0, 120.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.skull-barrage.damage", 135.0, 160.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.skull-barrage.guard-health", 360.0, 493.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.skull-barrage.guard-damage", 90.0, 110.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.fire-breath.damage", 50.0, 55.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.summon-skeletons.health", 540.0, 739.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.summon-skeletons.damage", 90.0, 110.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.death-summon.ruler-health", 1_125.0, 1_540.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.meteor-rain.damage", 350.0, 420.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.bone-prison.damage", 135.0, 160.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.bone-spikes.damage", 250.0, 300.0);
+        migrateKnownDefaultNumber("bone-dragon.abilities.ground-charge.damage", 280.0, 340.0);
+
+        migrateKnownDefaultNumber("endsun-guard.phases.p1-health", 38_100.0, 38_061.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p2-health", 33_800.0, 33_832.0);
+        migrateKnownDefaultNumber("endsun-guard.phases.p3-health", 29_600.0, 29_603.0);
+        migrateKnownDefaultNumber("endsun-guard.attack-damage", 275.0, 400.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.scythe-return.outward-damage", 240.0, 350.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.scythe-return.return-damage", 485.0, 700.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.amethyst-judgement.damage", 620.0, 900.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.soul-crown.flame-damage", 110.0, 160.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.black-sun.collapse-damage", 345.0, 500.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.sand-funeral.damage", 85.0, 120.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.scythe-echo.damage", 380.0, 550.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.nether-boundary.return-damage", 205.0, 300.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.sunfall.impact-damage", 380.0, 550.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.sunfall.radiation-damage", 70.0, 100.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.pharaoh-edict.reflect-damage", 170.0, 250.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.pharaoh-edict.movement-damage", 380.0, 550.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.pharaoh-edict.petrify-damage", 415.0, 600.0);
+        migrateKnownDefaultNumber("endsun-guard.abilities.pharaoh-edict.group-damage", 275.0, 400.0);
+
+        migrateKnownDefaultNumber("end-witch.phases.p1-health", 83_300.0, 83_574.0);
+        migrateKnownDefaultNumber("end-witch.phases.p2-health", 80_500.0, 80_479.0);
+        migrateKnownDefaultNumber("end-witch.phases.p3-health", 77_400.0, 77_383.0);
+        migrateKnownDefaultNumber("end-witch.attack-damage", 580.0, 1_000.0);
+        migrateKnownDefaultNumber("end-witch.marks.third-stack-explosion-damage", 290.0, 500.0);
+        migrateKnownDefaultNumber("end-witch.abilities.magic-arrows.damage", 405.0, 700.0);
+        migrateKnownDefaultNumber("end-witch.abilities.black-skirt.damage", 380.0, 650.0);
+        migrateKnownDefaultNumber("end-witch.abilities.fate-gaze.damage", 640.0, 1_100.0);
+        migrateKnownDefaultNumber("end-witch.abilities.witch-blink.damage", 490.0, 850.0);
+        migrateKnownDefaultNumber("end-witch.abilities.witch-blink.echo-damage", 435.0, 750.0);
+        migrateKnownDefaultNumber("end-witch.abilities.witch-scissors.damage", 930.0, 1_600.0);
+        migrateKnownDefaultNumber("end-witch.abilities.funeral-flowers.drain-damage", 130.0, 200.0);
+        migrateKnownDefaultNumber("end-witch.abilities.time-funeral.damage", 700.0, 1_200.0);
+        migrateKnownDefaultNumber("end-witch.abilities.doom-link.damage", 290.0, 500.0);
+        migrateKnownDefaultNumber("end-witch.abilities.night-meteors.damage", 580.0, 1_000.0);
+        migrateKnownDefaultNumber("end-witch.abilities.shadow-cage.explosion-damage", 700.0, 1_200.0);
+        migrateKnownDefaultNumber("end-witch.abilities.heaven-inversion.damage", 985.0, 1_700.0);
+        migrateKnownDefaultNumber("end-witch.abilities.seven-ends.damage", 700.0, 1_200.0);
     }
 
     private void setExplicitDefault(String path, Object value) {
@@ -968,6 +1065,10 @@ public final class YknBossPlugin extends JavaPlugin {
 
     public MessageService messages() {
         return messages;
+    }
+
+    public RaidSidebarService raidSidebar() {
+        return raidSidebar;
     }
 
     public SpecialItemManager specialItemManager() {

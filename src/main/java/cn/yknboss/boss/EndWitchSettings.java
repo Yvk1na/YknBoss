@@ -37,10 +37,10 @@ public record EndWitchSettings(
         if (root == null) throw new IllegalStateException("config.yml 缺少 end-witch 配置段");
         return new EndWitchSettings(
                 root.getString("display-name", "&2&l终焉之魔女·伊芙蕾雅"),
-                health(root, "phases.p1-health", 83_574.0),
-                health(root, "phases.p2-health", 80_479.0),
-                health(root, "phases.p3-health", 77_383.0),
-                nonNegative(root.getDouble("attack-damage", 1_000.0)),
+                health(root, "phases.p1-health", 83_300.0),
+                health(root, "phases.p2-health", 80_500.0),
+                health(root, "phases.p3-health", 77_400.0),
+                nonNegative(root.getDouble("attack-damage", 580.0)),
                 Math.min(BossAttributeLimits.MAX_ARMOR,
                         nonNegative(root.getDouble("armor", 30.0))),
                 between(root.getDouble("movement-speed", 0.29), 0.01, 1.0),

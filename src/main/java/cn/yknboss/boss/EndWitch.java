@@ -725,7 +725,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
         for (Player player : combatPlayers()) {
             double horizontal = horizontalDistance(player.getLocation(), center);
             if (Math.abs(horizontal - radius) > 1.7 || player.getLocation().getY() > center.getY() + .65) continue;
-            hurt(player, cfg("abilities.black-skirt.damage", 650.0), randomGaugeGain(), 0);
+            hurt(player, cfg("abilities.black-skirt.damage", 380.0), randomGaugeGain(), 0);
             Vector knockback = player.getLocation().toVector().subtract(center.toVector()).setY(.32);
             if (knockback.lengthSquared() > .01) player.setVelocity(knockback.normalize().multiply(1.05).setY(.35));
         }
@@ -760,7 +760,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
             if (crystal != null) { destroyCrystal(crystal, point); return; }
             for (Player player : combatPlayers()) {
                 if (skillHits.add(player.getUniqueId()) && player.getBoundingBox().expand(.45).contains(point.toVector())) {
-                    hurt(player, cfg("abilities.fate-gaze.damage", 1_100.0), randomGaugeGain(), 1);
+                    hurt(player, cfg("abilities.fate-gaze.damage", 640.0), randomGaugeGain(), 1);
                     return;
                 }
             }
@@ -783,7 +783,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
             controller.teleport(destination);
             controller.getWorld().spawnParticle(Particle.PORTAL, skillOrigin.clone().add(0, 1, 0), 45, .7, 1.1, .7, .12);
         }
-        if (elapsed == 18L) slashAt(controller.getLocation(), cfg("abilities.witch-blink.damage", 850.0));
+        if (elapsed == 18L) slashAt(controller.getLocation(), cfg("abilities.witch-blink.damage", 490.0));
         if (elapsed >= 8L && elapsed <= 60L && elapsed % 3L == 0L) {
             ParticleCompat.spawnDust(controller.getWorld(), controller.getEyeLocation(), 4,
                     .18, .12, .18, .01, Color.fromRGB(30, 255, 135), 1.25f);
@@ -791,7 +791,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
         if (elapsed >= 8L && elapsed < 60L && elapsed % 3L == 0L) {
             controller.getWorld().spawnParticle(Particle.PORTAL, skillOrigin.clone().add(0, 1, 0), 6, .4, .8, .4, .02);
         }
-        if (elapsed == 60L) slashAt(skillOrigin, cfg("abilities.witch-blink.echo-damage", 750.0));
+        if (elapsed == 60L) slashAt(skillOrigin, cfg("abilities.witch-blink.echo-damage", 435.0));
         if (elapsed >= 68L) finishSkillWithCooldown(8.0);
     }
 
@@ -815,7 +815,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
                 cfg("abilities.witch-scissors.health", 3_500.0), age + 50L, target.getUniqueId(), 0);
         if (elapsed == 40L && auxiliaries.values().stream().anyMatch(aux -> aux.type == AuxType.SCISSORS && !aux.resolved)) {
             if (target.getLocation().distanceSquared(skillOrigin) <= 9.0) {
-                hurt(target, cfg("abilities.witch-scissors.damage", 1_600.0), randomGaugeGain(), 1);
+                hurt(target, cfg("abilities.witch-scissors.damage", 930.0), randomGaugeGain(), 1);
                 target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 8, true, true, true));
                 target.setVelocity(new Vector());
             }
@@ -922,7 +922,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
                 location.getWorld().spawnParticle(Particle.EXPLOSION, location, 2);
                 for (Player player : combatPlayers()) {
                     if (player.getLocation().distanceSquared(location) <= 9.0)
-                        hurt(player, cfg("abilities.time-funeral.damage", 1_200.0), randomGaugeGain(), 1);
+                        hurt(player, cfg("abilities.time-funeral.damage", 700.0), randomGaugeGain(), 1);
                 }
             }
         }
@@ -949,8 +949,8 @@ public final class EndWitch implements ScriptedBossLifecycle {
         Player secondPlayer = player(linkSecond);
         if (elapsed % 20L == 0L && (distance > cfg("abilities.doom-link.maximum-distance", 13)
                 || distance < cfg("abilities.doom-link.minimum-distance", 5))) {
-            if (firstPlayer != null) hurt(firstPlayer, cfg("abilities.doom-link.damage", 500.0), 2, 0);
-            if (secondPlayer != null) hurt(secondPlayer, cfg("abilities.doom-link.damage", 500.0), 2, 0);
+            if (firstPlayer != null) hurt(firstPlayer, cfg("abilities.doom-link.damage", 290.0), 2, 0);
+            if (secondPlayer != null) hurt(secondPlayer, cfg("abilities.doom-link.damage", 290.0), 2, 0);
         }
         if (distancePointToSegment(controller.getLocation().toVector(), first.toVector(), second.toVector()) < 1.8) {
             vulnerableUntil = Math.max(vulnerableUntil, age + 80L);
@@ -989,7 +989,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
         if (crystal != null) destroyCrystal(crystal, impact);
         for (Player player : combatPlayers()) {
             if (player.getLocation().distanceSquared(impact) <= radius * radius)
-                hurt(player, cfg("abilities.night-meteors.damage", 1_000.0), randomGaugeGain(), 1);
+                hurt(player, cfg("abilities.night-meteors.damage", 580.0), randomGaugeGain(), 1);
         }
     }
 
@@ -1037,7 +1037,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
             skillOrigin.getWorld().spawnParticle(Particle.EXPLOSION, skillOrigin, 2);
             for (Player player : combatPlayers()) {
                 if (player.getLocation().distanceSquared(skillOrigin) <= 12.25)
-                    hurt(player, cfg("abilities.shadow-cage.explosion-damage", 1_200.0), randomGaugeGain(), 1);
+                    hurt(player, cfg("abilities.shadow-cage.explosion-damage", 700.0), randomGaugeGain(), 1);
             }
         }
         if (elapsed >= 115L) finishSkillWithCooldown(18.0);
@@ -1061,7 +1061,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
                 boolean safe = recordedLocations.values().stream().anyMatch(
                         location -> horizontalDistance(location, player.getLocation()) <= safeRadius);
                 if (safe) rebelUntil.put(player.getUniqueId(), age + 60L);
-                else hurt(player, cfg("abilities.heaven-inversion.damage", 1_700.0), randomGaugeGain(), 2);
+                else hurt(player, cfg("abilities.heaven-inversion.damage", 985.0), randomGaugeGain(), 2);
             }
         }
         if (elapsed >= 75L) finishSkillWithCooldown(22.0);
@@ -1171,7 +1171,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
                 if (bolt.location.getBlock().getType().isSolid()) { remove = true; continue; }
                 for (Player player : combatPlayers()) {
                     if (!player.getBoundingBox().expand(.35).contains(bolt.location.toVector())) continue;
-                    hurt(player, cfg("abilities.magic-arrows.damage", 700.0), randomGaugeGain(), 1);
+                    hurt(player, cfg("abilities.magic-arrows.damage", 405.0), randomGaugeGain(), 1);
                     remove = true;
                     break;
                 }
@@ -1210,7 +1210,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
         double radius = cfg("abilities.funeral-flowers.drain-radius", 5.0);
         for (Player player : combatPlayers()) {
             if (player.getLocation().distanceSquared(aux.entity.getLocation()) <= radius * radius)
-                hurt(player, cfg("abilities.funeral-flowers.drain-damage", 200.0), 2, 0);
+                hurt(player, cfg("abilities.funeral-flowers.drain-damage", 130.0), 2, 0);
         }
     }
 
@@ -1271,7 +1271,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
             };
             if (!hit) continue;
             sevenHitPlayers.add(player.getUniqueId());
-            hurt(player, cfg("abilities.seven-ends.damage", 1_200.0), randomGaugeGain(), 1);
+            hurt(player, cfg("abilities.seven-ends.damage", 700.0), randomGaugeGain(), 1);
         }
     }
 
@@ -1888,7 +1888,7 @@ public final class EndWitch implements ScriptedBossLifecycle {
         if (next >= 3 && previous < 3) {
             player.setSprinting(false);
             player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 1);
-            double damage = scaledDamage(cfg("marks.third-stack-explosion-damage", 500.0));
+            double damage = scaledDamage(cfg("marks.third-stack-explosion-damage", 290.0));
             dealSkillDamage(player, plugin.slayer().incomingDamage(player, damage));
             disableShield(player);
         }

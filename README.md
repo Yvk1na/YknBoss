@@ -32,12 +32,14 @@
 
 - 必须安装 Multiverse-Core 5.7.3+；骨龙、阿努赫和伊芙蕾雅分别拥有 10 个半径 100 格的普通虚空世界，可供不同队伍同时战斗。
 - 三种 Boss 的实例世界统一存放在服务端 `bossmap/` 目录，例如 `bossmap/bone_dragon_arena_01`；旧版平铺世界会在插件启动时安全迁移，世界内有玩家时不会移动。
-- 每队默认最多 10 人（可配置）；队长使用 `/yknboss enter bone_dragon` 或 `/yknboss enter endsun_guard` 分配空闲实例并传送在线成员，队员可用同一指令重新进入本队实例。
+- 每队及每个副本最多 6 人；队长使用 `/yknboss enter bone_dragon` 或 `/yknboss enter endsun_guard` 分配空闲实例并传送在线成员，队员可用同一指令重新进入本队实例。
 - `/p invite <玩家ID>` 会在邀请者没有队伍时自动创建队伍；邀请有效期为 60 秒，60 秒内不能再次邀请同一名玩家。
 - 队员死亡后等待 10 秒复活；提前点击重生会进入旁观等待。全队都在等待复活时立即挑战失败并返程重置。
 - 队长可在副本内使用 `/yknboss giveup` 放弃挑战；队伍人数上限、复活时间和全部玩家提示均可在 `config.yml` 修改。
 - 场地内禁止玩家放置、破坏、点燃方块和使用桶，爆炸、活塞及实体也无法改变场地。
 - 右键中央不可破坏的对应 Boss 祭坛开始召唤。Boss 死亡 30 秒后队员返回原位置；实例在下一支队伍进入前以固定种子单独重置。
+- 进入副本后右侧会切换为专用挑战面板，原样保留进入前 Skyblock 面板的标题、顶部日期/服务器标识和底部地址，并显示剩余时间、团队近 10 秒 DPS，以及最多 6 名队员的当前生命和个人 DPS；离开、掉线、结算或挑战失败后自动恢复进入前的计分板。
+- v2.0.17 按重做后的 AuraSkills 重新校准：骨龙、阿努赫、伊芙蕾雅分别以 50/80/100 级玩家的最终 DPS 158/286/639 为中心，1~6 人采用线性血量倍率，正常流程目标均约 7 分钟；六人倍率下三个 Boss 的每个阶段实体血量仍不超过 500000。
 - `/yknboss arena reset` 可在场内无人时手动重置副本。
 - Boss 显式技能仍经过 YknRpg 防御、AuraSkills 韧性/盾御/免疫、讨伐抗性、职业减伤和原版护甲，但不会再误触发仅面向普通怪物的 `Mob Master` 减伤；普通攻击和召唤物攻击不受此规则影响。
 
@@ -58,10 +60,10 @@ $env:JAVA_HOME = 'C:\java\25'
 
 产物：
 
-- `build/libs/YknBoss-2.0.14-obfuscated.jar`
-- `build/distributions/YknBoss-BetterModel-Pack-2.0.14.zip`
-- `build/distributions/YknBoss-CraftEngine-Pack-2.0.14.zip`
-- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.14.zip`
+- `build/libs/YknBoss-2.0.17-obfuscated.jar`
+- `build/distributions/YknBoss-BetterModel-Pack-2.0.17.zip`
+- `build/distributions/YknBoss-CraftEngine-Pack-2.0.17.zip`
+- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.17.zip`
 
 服务端也需要使用 Java 25 启动。
 
@@ -84,7 +86,7 @@ CraftEngine 和 ItemsAdder 都是软依赖，不需要同时安装；目前仅�
 ### BetterModel（骨龙与烬日冥卫必需）
 
 1. 将用户提供的 `bettermodel-3.4.1-paper.jar` 放入服务端 `plugins/`。
-2. 解压 `YknBoss-BetterModel-Pack-2.0.14.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
+2. 解压 `YknBoss-BetterModel-Pack-2.0.17.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
 3. 启动服务器，或执行 `/bettermodel reload`。
 4. 执行 `/yknboss spawn bone_dragon`。
 

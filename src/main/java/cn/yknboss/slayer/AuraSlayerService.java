@@ -2,30 +2,21 @@ package cn.yknboss.slayer;
 
 import cn.yknboss.YknBossPlugin;
 import dev.aurelium.auraskills.api.AuraSkillsApi;
-import dev.aurelium.auraskills.api.ability.Abilities;
-import dev.aurelium.auraskills.api.ability.CustomAbility;
-import dev.aurelium.auraskills.api.item.ItemContext;
+import dev.aurelium.auraskills.api.ability.Ability;
 import dev.aurelium.auraskills.api.registry.NamespacedId;
-import dev.aurelium.auraskills.api.registry.NamespacedRegistry;
-import dev.aurelium.auraskills.api.skill.CustomSkill;
+import dev.aurelium.auraskills.api.skill.Skill;
 import dev.aurelium.auraskills.api.user.SkillsUser;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.damage.DamageSource;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
-import java.io.File;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-final class AuraSlayerService implements SlayerService, Listener {
+final class AuraSlayerService implements SlayerService {
 
     private static final String NAMESPACE = "yknboss";
     private static final String BONE_DRAGON = "bone_dragon";
@@ -34,41 +25,23 @@ final class AuraSlayerService implements SlayerService, Listener {
 
     private final YknBossPlugin plugin;
     private final AuraSkillsApi api;
-    private final CustomAbility huntingInstinct;
-    private final CustomAbility bossResistance;
-    private final CustomAbility lastStand;
-    private final CustomAbility regroup;
-    private final CustomAbility finalInsight;
-    private final CustomSkill slayer;
-    private final ThreadLocal<UUID> scriptedDamageTarget = new ThreadLocal<>();
+    private final Ability huntingInstinct;
+    private final Ability bossResistance;
+    private final Ability lastStand;
+    private final Ability regroup;
+    private final Ability finalInsight;
+    private final Skill slayer;
 
     AuraSlayerService(YknBossPlugin plugin) {
         this.plugin = plugin;
-        saveContentFiles();
         api = AuraSkillsApi.get();
-        File contentDirectory = new File(plugin.getDataFolder(), "auraskills-content");
-        NamespacedRegistry registry = api.useRegistry(NAMESPACE, contentDirectory);
-
-        huntingInstinct = ability("hunting_instinct", "hunting-instinct", 0.4, 0.4, 1);
-        bossResistance = ability("boss_resistance", "boss-resistance", 0.5, 0.5, 2);
-        lastStand = ability("last_stand", "last-stand", 0.6, 0.6, 3);
-        regroup = ability("regroup", "regroup", 0.2, 0.2, 4);
-        finalInsight = ability("final_insight", "final-insight", 0.4, 0.4, 5);
-        registry.registerAbility(huntingInstinct);
-        registry.registerAbility(bossResistance);
-        registry.registerAbility(lastStand);
-        registry.registerAbility(regroup);
-        registry.registerAbility(finalInsight);
-
-        slayer = CustomSkill.builder(id("slayer"))
-                .item(ItemContext.builder().material("nether_star").group("first_row").order(1).build())
-                .abilities(huntingInstinct, bossResistance, lastStand, regroup, finalInsight)
-                .displayName(text("slayer.skill.name"))
-                .description(text("slayer.skill.description"))
-                .build();
-        registry.registerSkill(slayer);
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        plugin.getLogger().info("已向 AuraSkills 注册讨伐职业（最高 100 级）。");
+        slayer = requiredSkill("slayer");
+        huntingInstinct = requiredAbility("hunting_instinct");
+        bossResistance = requiredAbility("boss_resistance");
+        lastStand = requiredAbility("last_stand");
+        regroup = requiredAbility("regroup");
+        finalInsight = requiredAbility("final_insight");
+        plugin.getLogger().info("已连接 AuraSkills 内建讨伐职业。");
     }
 
     @Override
@@ -88,41 +61,7 @@ final class AuraSlayerService implements SlayerService, Listener {
 
     @Override
     public void dealSkillDamage(Player player, double damage, DamageSource source) {
-        UUID previousTarget = scriptedDamageTarget.get();
-        scriptedDamageTarget.set(player.getUniqueId());
-        try {
-            player.damage(Math.max(0.0, damage), source);
-        } finally {
-            if (previousTarget == null) scriptedDamageTarget.remove();
-            else scriptedDamageTarget.set(previousTarget);
-        }
-    }
-
-    /**
-     * AuraSkills treats every non-player LivingEntity as an ordinary mob and
-     * therefore applies Mob Master to the Husk/Zombie controllers used by boss
-     * scripts. Only undo that one multiplier while a scripted ability is being
-     * delivered. Toughness, Shielding, Immunity, YknRpg defense, class defense,
-     * Slayer resistance and vanilla armor remain in the normal event pipeline.
-     */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void restoreScriptedBossDamage(EntityDamageByEntityEvent event) {
-        if (!(event.getEntity() instanceof Player player)
-                || !(event.getDamager() instanceof LivingEntity)
-                || event.getDamager() instanceof Player
-                || !player.getUniqueId().equals(scriptedDamageTarget.get())
-                || !plugin.getConfig().getBoolean(
-                "boss-skill-damage.ignore-aura-mob-master", true)
-                || !Abilities.MOB_MASTER.isEnabled()) return;
-
-        SkillsUser user = api.getUser(player.getUniqueId());
-        if (!user.isLoaded() || !user.hasSkillPermission(Abilities.MOB_MASTER.getSkill())) return;
-        int level = user.getAbilityLevel(Abilities.MOB_MASTER);
-        if (level <= 0) return;
-        double mobMasterReduction = Abilities.MOB_MASTER.getValue(level) / 100.0;
-        double remainingDamage = 1.0 - mobMasterReduction;
-        if (remainingDamage <= 0.0 || remainingDamage >= 1.0) return;
-        event.setDamage(event.getDamage() / remainingDamage);
+        player.damage(Math.max(0.0, damage), source);
     }
 
     @Override
@@ -135,6 +74,7 @@ final class AuraSlayerService implements SlayerService, Listener {
     @Override
     public void awardVictory(String raid, Set<UUID> eligibleParticipants,
                              Map<UUID, Double> damageContributions) {
+        if (!slayer.isEnabled()) return;
         double totalDamage = damageContributions.values().stream()
                 .filter(value -> value != null && value > 0.0)
                 .mapToDouble(Double::doubleValue)
@@ -161,20 +101,8 @@ final class AuraSlayerService implements SlayerService, Listener {
         }
     }
 
-    private CustomAbility ability(String id, String configKey, double base, double perLevel, int unlock) {
-        return CustomAbility.builder(id(id))
-                .baseValue(base)
-                .valuePerLevel(perLevel)
-                .unlock(unlock)
-                .levelUp(5)
-                .maxLevel(20)
-                .displayName(text("slayer.abilities." + configKey + ".name"))
-                .description(text("slayer.abilities." + configKey + ".description"))
-                .info(text("slayer.abilities." + configKey + ".info"))
-                .build();
-    }
-
-    private double value(Player player, CustomAbility ability) {
+    private double value(Player player, Ability ability) {
+        if (!slayer.isEnabled() || !ability.isEnabled()) return 0.0;
         SkillsUser user = api.getUser(player.getUniqueId());
         if (!user.isLoaded()) return 0.0;
         int level = user.getAbilityLevel(ability);
@@ -197,18 +125,21 @@ final class AuraSlayerService implements SlayerService, Listener {
         return NamespacedId.of(NAMESPACE, key);
     }
 
-    private String text(String path) {
-        return plugin.getConfig().getString(path, path);
+    private Skill requiredSkill(String key) {
+        NamespacedId id = id(key);
+        Skill skill = api.getGlobalRegistry().getSkill(id);
+        if (skill == null) {
+            throw new IllegalStateException("AuraSkills 未注册讨伐职业 " + id);
+        }
+        return skill;
     }
 
-    private void saveContentFiles() {
-        for (String path : new String[] {
-                "auraskills-content/skills.yml",
-                "auraskills-content/abilities.yml",
-                "auraskills-content/xp_requirements.yml",
-                "auraskills-content/sources/slayer.yml"
-        }) {
-            plugin.saveResource(path, false);
+    private Ability requiredAbility(String key) {
+        NamespacedId id = id(key);
+        Ability ability = api.getGlobalRegistry().getAbility(id);
+        if (ability == null) {
+            throw new IllegalStateException("AuraSkills 未注册讨伐能力 " + id);
         }
+        return ability;
     }
 }
