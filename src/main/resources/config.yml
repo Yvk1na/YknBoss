@@ -1,4 +1,4 @@
-config-version: 59
+config-version: 60
 
 # 三种 Boss 的所有副本实例统一存放在服务端 bossmap 文件夹中。
 # world-name 仍作为各 Boss 实例的名称前缀，例如 bossmap/bone_dragon_arena_01。
@@ -633,7 +633,7 @@ messages:
       witch-line: "&7- {id} | HP {health}/{max-health} | {phase} | {skill} | 终焉 {gauge} | {world} {x} {y} {z}"
     help-player:
       - "&b/yknboss enter <bone_dragon|endsun_guard|end_witch> &7- 进入对应 Boss 副本"
-      - "&c/yknboss giveup &7- 队长放弃当前 Boss 副本"
+      - "&c/yknboss leave &7- 队长放弃当前 Boss 副本"
     help-admin:
       - "&b/yknboss spawn bone_dragon"
       - "&6/yknboss spawn endsun_guard"

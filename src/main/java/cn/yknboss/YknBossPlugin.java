@@ -410,7 +410,7 @@ public final class YknBossPlugin extends JavaPlugin {
             if (!getConfig().isSet(spikesRoot + "spikes-per-ring")) getConfig().set(spikesRoot + "spikes-per-ring", 18);
             if (!getConfig().isSet(spikesRoot + "hit-radius")) getConfig().set(spikesRoot + "hit-radius", 1.75);
         }
-        if (version >= 59) return false;
+        if (version >= 60) return false;
         if (version < 23) {
             String absorbRoot = "bone-dragon.abilities.skeleton-absorb.";
             if (!getConfig().isSet(absorbRoot + "max-damage-increase-percent")) {
@@ -675,9 +675,23 @@ public final class YknBossPlugin extends JavaPlugin {
             getConfig().set("boss-skill-damage", null);
         }
         if (version < 59) migrateAuraSkillsBalanceV59();
-        getConfig().set("config-version", 59);
-        getLogger().info("Boss 配置已迁移至 v59（按新版 AuraSkills 数值重新平衡）。");
+        if (version < 60) migrateLeaveCommandV60();
+        getConfig().set("config-version", 60);
+        getLogger().info("Boss 配置已迁移至 v60（副本退出指令改为 /yknboss leave）。");
         return true;
+    }
+
+    private void migrateLeaveCommandV60() {
+        String helpPath = "messages.command.help-player";
+        var help = new java.util.ArrayList<>(getConfig().getStringList(helpPath));
+        boolean changed = false;
+        for (int index = 0; index < help.size(); index++) {
+            String line = help.get(index);
+            if (!line.toLowerCase(java.util.Locale.ROOT).contains("/yknboss giveup")) continue;
+            help.set(index, line.replaceAll("(?i)/yknboss giveup", "/yknboss leave"));
+            changed = true;
+        }
+        if (changed) getConfig().set(helpPath, help);
     }
 
     private void migrateCastingFlowV53() {

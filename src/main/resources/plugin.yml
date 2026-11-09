@@ -9,7 +9,7 @@ softdepend: [AuraSkills, ItemsAdder, CraftEngine, BetterModel]
 commands:
   yknboss:
     description: 管理 YknBoss、Boss 副本与特殊物品
-    usage: /yknboss <enter|giveup|spec|spawn|kill|info|reload|arena|admin>
+    usage: /yknboss <enter|leave|spec|spawn|kill|info|reload|arena|admin>
   party:
     description: 创建和管理多人 Boss 副本队伍
     usage: /party <invite|accept|decline|remove|transfer|leave|disband|list|chat>

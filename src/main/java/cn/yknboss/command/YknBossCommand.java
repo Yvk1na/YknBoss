@@ -33,7 +33,7 @@ public final class YknBossCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         String action = args[0].toLowerCase(Locale.ROOT);
-        if (action.equals("giveup")) return giveUp(sender);
+        if (action.equals("leave")) return leave(sender);
         if (action.equals("enter")) return enter(sender, args);
         if (action.equals("spec") || action.equals("spectate")) return spectate(sender, args);
         if (!sender.hasPermission("yknboss.admin")) {
@@ -54,7 +54,7 @@ public final class YknBossCommand implements CommandExecutor, TabCompleter {
         };
     }
 
-    private boolean giveUp(CommandSender sender) {
+    private boolean leave(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             plugin.messages().send(sender, "command.player-only");
             return true;
@@ -346,7 +346,7 @@ public final class YknBossCommand implements CommandExecutor, TabCompleter {
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
             java.util.ArrayList<String> actions = new java.util.ArrayList<>();
-            actions.add("giveup");
+            actions.add("leave");
             actions.add("enter");
             if (sender.hasPermission("yknboss.admin") || sender.hasPermission("yknboss.spec")) actions.add("spec");
             if (sender.hasPermission("yknboss.admin")) {
@@ -365,7 +365,7 @@ public final class YknBossCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[0].equalsIgnoreCase("enter")) {
             return filter(List.of("bone_dragon", "endsun_guard", "end_witch"), args[1]);
         }
-        if (!args[0].equalsIgnoreCase("giveup") && !args[0].equalsIgnoreCase("enter")
+        if (!args[0].equalsIgnoreCase("leave") && !args[0].equalsIgnoreCase("enter")
                 && !sender.hasPermission("yknboss.admin")) return List.of();
         if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) {
             return filter(List.of("bone_dragon", "endsun_guard", "end_witch"), args[1]);

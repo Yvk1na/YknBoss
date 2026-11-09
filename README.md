@@ -35,7 +35,7 @@
 - 每队及每个副本最多 6 人；队长使用 `/yknboss enter bone_dragon` 或 `/yknboss enter endsun_guard` 分配空闲实例并传送在线成员，队员可用同一指令重新进入本队实例。
 - `/p invite <玩家ID>` 会在邀请者没有队伍时自动创建队伍；邀请有效期为 60 秒，60 秒内不能再次邀请同一名玩家。
 - 队员死亡后等待 10 秒复活；提前点击重生会进入旁观等待。全队都在等待复活时立即挑战失败并返程重置。
-- 队长可在副本内使用 `/yknboss giveup` 放弃挑战；队伍人数上限、复活时间和全部玩家提示均可在 `config.yml` 修改。
+- 队长可在副本内使用 `/yknboss leave` 放弃挑战；队伍人数上限、复活时间和全部玩家提示均可在 `config.yml` 修改。
 - 场地内禁止玩家放置、破坏、点燃方块和使用桶，爆炸、活塞及实体也无法改变场地。
 - 右键中央不可破坏的对应 Boss 祭坛开始召唤。Boss 死亡 30 秒后队员返回原位置；实例在下一支队伍进入前以固定种子单独重置。
 - 进入副本后右侧会切换为专用挑战面板，原样保留进入前 Skyblock 面板的标题、顶部日期/服务器标识和底部地址，并显示剩余时间、团队近 10 秒 DPS，以及最多 6 名队员的当前生命和个人 DPS；离开、掉线、结算或挑战失败后自动恢复进入前的计分板。
@@ -60,10 +60,10 @@ $env:JAVA_HOME = 'C:\java\25'
 
 产物：
 
-- `build/libs/YknBoss-2.0.17-obfuscated.jar`
-- `build/distributions/YknBoss-BetterModel-Pack-2.0.17.zip`
-- `build/distributions/YknBoss-CraftEngine-Pack-2.0.17.zip`
-- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.17.zip`
+- `build/libs/YknBoss-2.0.18-obfuscated.jar`
+- `build/distributions/YknBoss-BetterModel-Pack-2.0.18.zip`
+- `build/distributions/YknBoss-CraftEngine-Pack-2.0.18.zip`
+- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.18.zip`
 
 服务端也需要使用 Java 25 启动。
 
@@ -86,7 +86,7 @@ CraftEngine 和 ItemsAdder 都是软依赖，不需要同时安装；目前仅�
 ### BetterModel（骨龙与烬日冥卫必需）
 
 1. 将用户提供的 `bettermodel-3.4.1-paper.jar` 放入服务端 `plugins/`。
-2. 解压 `YknBoss-BetterModel-Pack-2.0.17.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
+2. 解压 `YknBoss-BetterModel-Pack-2.0.18.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
 3. 启动服务器，或执行 `/bettermodel reload`。
 4. 执行 `/yknboss spawn bone_dragon`。
 
@@ -100,7 +100,7 @@ CraftEngine 和 ItemsAdder 都是软依赖，不需要同时安装；目前仅�
 | `/yknboss enter endsun_guard` | 分配并进入一个阿努赫副本实例 |
 | `/yknboss arena create` | 通过 Multiverse 创建或加载全部 10 个骨龙副本 |
 | `/yknboss arena reset` | 场内无人时手动恢复副本初始状态 |
-| `/yknboss giveup` | 队长放弃当前副本并触发全队返程重置 |
+| `/yknboss leave` | 队长放弃当前副本并触发全队返程重置 |
 | `/yknboss spec <玩家ID>` | 以观察者模式进入该玩家正在挑战的骨龙或阿努赫副本 |
 | `/yknboss spec leave` | 退出观战并返回原位置 |
 | `/yknboss admin special` | 管理员打开特殊物品目录 |
