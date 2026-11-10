@@ -130,6 +130,12 @@ def generate(source, tier):
     for i,(x,z) in enumerate(((-3,-3),(2,2),(4,-2))):
         cube(f"gem_{i}", [x-.8,seam-1.6,z-.8], [x+.8,seam-1,z+.8], gem_uv)
     model["elements"] = base+lid+treasure
+    # BetterModel 3.4.1 dereferences all six faces; omitted ones crash the whole model
+    # loader. Hidden faces must exist with texture null (Blockbench's own convention).
+    for element in model["elements"]:
+        faces_map = element.setdefault("faces", {})
+        for side in ("north","east","south","west","up","down"):
+            faces_map.setdefault(side, {"uv": [0,0,0,0], "texture": None})
     model["groups"] = [{"name": name, "uuid": uid(tier+"/"+name), "origin": origin,
                         "rotation": [0,0,0], "export": True, "visibility": True,
                         "light_emission": 15 if name == "treasure" else 0}

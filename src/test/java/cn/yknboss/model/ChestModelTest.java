@@ -41,6 +41,29 @@ class ChestModelTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"copper", "silver", "gold"})
+    void everyElementDeclaresAllSixFaces(String tier) throws Exception {
+        // BetterModel 3.4.1 calls ModelUV.hasTexture() on every side; a missing face aborts
+        // loading of every model on the server, not just this one.
+        var root =
+                com.google.gson.JsonParser.parseString(
+                                Files.readString(
+                                        Path.of(
+                                                "packs/bettermodel/models/yknboss_chest_"
+                                                        + tier
+                                                        + ".bbmodel")))
+                        .getAsJsonObject();
+        for (var element : root.getAsJsonArray("elements")) {
+            var faces = element.getAsJsonObject().getAsJsonObject("faces");
+            for (String side : List.of("north", "east", "south", "west", "up", "down")) {
+                assertTrue(
+                        faces != null && faces.has(side) && faces.get(side).isJsonObject(),
+                        tier + " " + element.getAsJsonObject().get("name") + " missing " + side);
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"copper", "silver", "gold"})
     void betterModel341ParsesBonesBrightnessAndHeldOpeningAnimation(String tier) throws Exception {
         var model =
                 ModelData.GSON.fromJson(
