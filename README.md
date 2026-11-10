@@ -43,6 +43,15 @@
 - `/yknboss arena reset` 可在场内无人时手动重置副本。
 - Boss 显式技能仍经过 YknRpg 防御、AuraSkills 韧性/盾御/免疫、讨伐抗性、职业减伤和原版护甲，但不会再误触发仅面向普通怪物的 `Mob Master` 减伤；普通攻击和召唤物攻击不受此规则影响。
 
+## 通关宝箱
+
+- Boss 被击败后，场地中央会出现一个 BetterModel 宝箱（模型 `yknboss_chest_copper` / `yknboss_chest_silver` / `yknboss_chest_gold`）；未加载模型时改用原版箱子外观。
+- 品质由通关用时（Boss 出现到被击杀）决定：默认 5:30 内为金宝箱，7:30 内为银宝箱，其余为铜宝箱；各 Boss 的时限在 `raid-loot.time-limits` 单独配置。
+- 银宝箱使用 `raid-loot.tables` 中的原始概率；金、铜宝箱按 `raid-loot.multipliers` 对基础素材、核心素材、稀有物品分别乘以倍率。
+- 每名合格成员（伤害不低于人均伤害的 30%）各自独立掷骰，概率不随队伍人数变化；核心素材带保底，计数写入玩家 PDC。
+- 右键宝箱打开领取界面：四个奖励格、“领取奖励”与“关闭”按钮，其余为淡灰色玻璃。离开副本时未领取的奖励自动发放，离线成员下次上线补发（`pending-loot.yml`）。
+- 掉落物来自 MythicMobs 的 YknRpg 首领素材（`mythic:YKI_*`）与首领护符（`eco:talismans:boss_*`），均为软依赖；物品不存在时该掉落项会被跳过并在控制台警告。
+
 ## 特殊物品
 
 - “彩虹”是固定为 `yknboss:rainbow` 物品模型的独立特殊物品；材质、PDC/NBT 和物品组件不会循环改变。

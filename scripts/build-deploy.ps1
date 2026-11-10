@@ -187,6 +187,9 @@ foreach ($requiredEntry in @(
     "models/endsun_anuhe.bbmodel",
     "models/skeleton_dragon.bbmodel",
     "models/end_witch.bbmodel",
+    "models/yknboss_chest_copper.bbmodel",
+    "models/yknboss_chest_silver.bbmodel",
+    "models/yknboss_chest_gold.bbmodel",
     "licenses/flying_magic_book_LICENSE.txt"
 )) {
     if ($packEntries -notcontains $requiredEntry) {
@@ -249,7 +252,23 @@ foreach ($requiredAnimation in @("animation.idle", "animation.walk", "animation.
         throw "End Witch model is missing animation $requiredAnimation."
     }
 }
-$modelSources = @($EndsunModel, $SkeletonDragonModel, $EndWitchModel)
+$chestModels = @("copper", "silver", "gold") | ForEach-Object {
+    Join-Path $ProjectRoot "packs\bettermodel\models\yknboss_chest_$_.bbmodel"
+}
+foreach ($chestModelPath in $chestModels) {
+    if (-not (Test-Path -LiteralPath $chestModelPath -PathType Leaf)) {
+        throw "Raid loot chest model is missing: $chestModelPath"
+    }
+    $chestModel = Get-Content -LiteralPath $chestModelPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $expectedChestName = [IO.Path]::GetFileNameWithoutExtension($chestModelPath)
+    if ($chestModel.name -ne $expectedChestName) {
+        throw "Raid loot chest model name mismatch: $chestModelPath"
+    }
+    if (@($chestModel.elements).Count -lt 1 -or @($chestModel.textures).Count -lt 1) {
+        throw "Raid loot chest model has no cubes or textures: $chestModelPath"
+    }
+}
+$modelSources = @($EndsunModel, $SkeletonDragonModel, $EndWitchModel) + $chestModels
 
 $PluginHash = Get-Sha256 $PluginJar.FullName
 $PackHash = Get-Sha256 $BetterModelPack

@@ -76,7 +76,7 @@ $env:PATH = 'C:\java\25\bin;' + $env:PATH
 
 1. 运行 `.\deploy.cmd -BuildOnly`，确认 Java 25、编译、ProGuard 和 BetterModel 打包全部成功。
 2. 确认混淆 JAR 可读取、包含 `plugin.yml`，并且文件名版本与 `plugin.yml` 版本一致。
-3. 确认 BetterModel ZIP 同时包含 `models/endsun_anuhe.bbmodel` 和 `models/skeleton_dragon.bbmodel`；涉及特殊物品时，同时确认 CraftEngine 与 ItemsAdder ZIP 含对应物品定义、模型和贴图。
+3. 确认 BetterModel ZIP 同时包含 `models/endsun_anuhe.bbmodel`、`models/skeleton_dragon.bbmodel` 以及三个通关宝箱模型 `models/yknboss_chest_copper.bbmodel`、`models/yknboss_chest_silver.bbmodel`、`models/yknboss_chest_gold.bbmodel`；涉及特殊物品时，同时确认 CraftEngine 与 ItemsAdder ZIP 含对应物品定义、模型和贴图。
 4. 确认阿努赫打包模型只有一个固定总根，根 UUID 为 `7c58f8ac-2c0d-4abe-b64d-1bb08e0fe3aa`，烘焙比例标记为 `1.5`。
 5. 记录脚本输出的插件、BetterModel、CraftEngine 与 ItemsAdder 包 SHA-256。不得部署未通过上述校验的产物。
 6. 用户明确要求部署时，先关闭服务端，再运行 `.\deploy.cmd`。不要在服务器运行时覆盖插件或 BetterModel 模型。

@@ -108,6 +108,73 @@ slayer:
     end-witch-xp: 2200
     minimum-damage-share: 0.01
 
+# 通关宝箱：Boss 被击败后在场地中央出现，品质由通关用时决定。
+# 每名合格成员各自独立掷骰，概率不随队伍人数变化；右键宝箱在界面中领取，
+# 离开副本时仍未领取的奖励会自动发放，离线成员在下次上线时补发。
+raid-loot:
+  enabled: true
+  # 个人伤害达到“全队总伤害 ÷ 开战人数 × 此比例”才有奖励；0 表示人人有份。
+  minimum-fair-share: 0.3
+  # 所有掉落项都未命中时，保底给予一件随机基础素材（取该项的最小数量）。
+  guarantee-one-base: true
+  chest:
+    interaction-width: 1.7
+    interaction-height: 1.6
+    offset-y: 0.0
+  # 通关用时（秒，从 Boss 出现到被击杀）不超过 gold 为金宝箱，不超过 silver 为银宝箱，其余为铜宝箱。
+  time-limits:
+    bone-dragon:
+      gold: 330
+      silver: 450
+    endsun-guard:
+      gold: 330
+      silver: 450
+    end-witch:
+      gold: 330
+      silver: 450
+  # 各品质对 base（基础素材）/ core（核心素材）/ rare（稀有物品）概率的倍率；银宝箱即下方掉落表的原始概率。
+  multipliers:
+    copper:
+      base: 0.75
+      core: 0.5
+      rare: 0.5
+    silver:
+      base: 1.0
+      core: 1.0
+      rare: 1.0
+    gold:
+      base: 1.25
+      core: 1.25
+      rare: 1.5
+  # item：mythic:<MythicMobs 物品 ID>、eco:<eco 物品查询串> 或原版物品名。
+  # chance 为银宝箱下的百分比概率；min/max 为数量范围；pity 为连续未掉落该物品多少场后下一场必掉（0 表示无保底）。
+  # 界面只有四个奖励格：命中超过四种时优先保留核心与稀有物品。
+  tables:
+    bone-dragon:
+      - {item: "mythic:YKI_BONE_DRAGON_FANG", category: base, chance: 50, min: 1, max: 2}
+      - {item: "mythic:YKI_OSSUARY_CARAPACE", category: base, chance: 40, min: 1, max: 2}
+      - {item: "mythic:YKI_SHATTERED_WINGBONE", category: base, chance: 40, min: 1, max: 2}
+      - {item: "mythic:YKI_SOULFIRE_MARROW", category: base, chance: 35, min: 1, max: 1}
+      - {item: "mythic:YKI_DEATH_RULER_CROWN", category: base, chance: 25, min: 1, max: 1}
+      - {item: "mythic:YKI_WRAITHFIRE_DRAGONHEART", category: core, chance: 10, min: 1, max: 1, pity: 20}
+      - {item: "eco:talismans:boss_1", category: rare, chance: 2, min: 1, max: 1}
+    endsun-guard:
+      - {item: "mythic:YKI_SOLAR_AEGIS_FRAGMENT", category: base, chance: 55, min: 1, max: 2}
+      - {item: "mythic:YKI_JUDGEMENT_AMETHYST", category: base, chance: 45, min: 1, max: 2}
+      - {item: "mythic:YKI_TWIN_ECLIPSE_ESSENCE", category: base, chance: 35, min: 1, max: 1}
+      - {item: "mythic:YKI_PHARAOH_EDICT_TABLET", category: base, chance: 28, min: 1, max: 1}
+      - {item: "mythic:YKI_ENDSUN_HEARTFURNACE", category: base, chance: 20, min: 1, max: 1}
+      - {item: "mythic:YKI_BLACK_SUN_CINDER", category: core, chance: 12, min: 1, max: 1, pity: 16}
+      - {item: "eco:talismans:boss_2", category: rare, chance: 2, min: 1, max: 1}
+    end-witch:
+      - {item: "mythic:YKI_WITCHMARK_SHARD", category: base, chance: 60, min: 1, max: 3}
+      - {item: "mythic:YKI_END_CRYSTAL_HEART", category: base, chance: 35, min: 1, max: 1}
+      - {item: "mythic:YKI_FUNERAL_PETAL", category: base, chance: 35, min: 1, max: 1}
+      - {item: "mythic:YKI_SILENT_RUNE_ASH", category: base, chance: 25, min: 1, max: 1}
+      - {item: "mythic:YKI_SEVERED_FATE_THREAD", category: base, chance: 18, min: 1, max: 1}
+      - {item: "mythic:YKI_BLACK_SUN_CORE", category: core, chance: 10, min: 1, max: 1, pity: 20}
+      - {item: "eco:talismans:boss_3", category: rare, chance: 1.5, min: 1, max: 1}
+
 endsun-guard:
   display-name: "&6&l烬日冥卫·阿努赫"
   # 伤害均是进入 YknRpg 防御、AuraSkills 减伤和原版护甲前的原始值。
@@ -593,6 +660,29 @@ bone-dragon:
 messages:
   slayer:
     xp-awarded: "&6讨伐完成！&f获得 &e{xp} &f点讨伐经验。"
+  loot:
+    quality:
+      copper: "&c铜宝箱"
+      silver: "&f银宝箱"
+      gold: "&6金宝箱"
+    chest-appeared: "&e通关用时 &f{time}&e，场地中央出现了{quality}&e！右键打开领取奖励。"
+    gui-title: "&8通关奖励 · {quality}"
+    claim:
+      name: "&a&l领取奖励"
+      lore:
+        - "&7点击将全部奖励放入背包"
+    close:
+      name: "&c&l关闭"
+      lore:
+        - "&7离开副本前可再次右键宝箱打开"
+    claimed: "&a已领取通关奖励。"
+    already-claimed: "&7你已经领取过这个宝箱的奖励。"
+    not-eligible: "&c你的伤害贡献不足，本次没有通关奖励。"
+    no-reward: "&7这个宝箱里没有属于你的奖励。"
+    inventory-full: "&e背包空间不足，剩余奖励仍保留在宝箱中。"
+    auto-granted: "&a未领取的通关奖励已自动发放到背包。"
+    overflow-dropped: "&e背包空间不足，剩余奖励已掉落在脚下。"
+    pending-delivered: "&a上次未领取的通关奖励已补发到背包。"
   command:
     no-permission: "&c你没有权限使用该管理指令。"
     player-only: "&c该命令只能由玩家执行。"

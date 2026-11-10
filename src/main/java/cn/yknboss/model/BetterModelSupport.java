@@ -84,6 +84,24 @@ public final class BetterModelSupport {
         return attach(modelId, entity, scale, initialAnimation, enableMagicEffects, false);
     }
 
+    /**
+     * 附加没有任何动画的静态模型（例如通关宝箱），不会尝试播放初始动画。
+     */
+    public Instance attachStatic(String modelId, Entity entity, float scale) {
+        if (!compatible) {
+            throw new IllegalStateException("需要 BetterModel 3.x；当前检测结果：" + detectedVersion());
+        }
+        ModelRenderer renderer = BetterModel.modelOrNull(modelId);
+        if (renderer == null) {
+            throw new IllegalStateException("BetterModel 未加载模型 " + modelId);
+        }
+        EntityTracker tracker = renderer.getOrCreate(BukkitAdapter.adapt(entity));
+        ModelScaler fixedScaler = ModelScaler.value(scale);
+        tracker.scaler(fixedScaler);
+        tracker.forceUpdate(true);
+        return new TrackerInstance(owner, tracker, fixedScaler);
+    }
+
     private Instance attach(String modelId, Entity entity, float scale,
                             String initialAnimation, boolean enableMagicEffects,
                             boolean forceInitialScaleUpdate) {

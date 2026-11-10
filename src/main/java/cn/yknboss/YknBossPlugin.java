@@ -17,6 +17,7 @@ import cn.yknboss.boss.EndWitchSettings;
 import cn.yknboss.command.YknBossCommand;
 import cn.yknboss.command.PartyCommand;
 import cn.yknboss.listener.BossListener;
+import cn.yknboss.loot.RaidLootService;
 import cn.yknboss.listener.BoneDragonArenaListener;
 import cn.yknboss.model.BetterModelSupport;
 import cn.yknboss.message.MessageService;
@@ -68,6 +69,7 @@ public final class YknBossPlugin extends JavaPlugin {
     private BetterModelSupport betterModel;
     private SlayerService slayerService;
     private RaidSidebarService raidSidebar;
+    private RaidLootService raidLoot;
 
     @Override
     public void onEnable() {
@@ -105,11 +107,13 @@ public final class YknBossPlugin extends JavaPlugin {
         ArenaWorldStorage.ensureRootDirectory();
         migrateLegacyArenaWorlds();
         specialItemManager = new SpecialItemManager(this);
+        raidLoot = new RaidLootService(this);
         slayerService = SlayerService.create(this);
 
         getServer().getPluginManager().registerEvents(new BossListener(this), this);
         getServer().getPluginManager().registerEvents(new BoneDragonArenaListener(this), this);
         getServer().getPluginManager().registerEvents(specialItemManager, this);
+        getServer().getPluginManager().registerEvents(raidLoot, this);
         YknBossCommand command = new YknBossCommand(this);
         PluginCommand pluginCommand = getCommand("yknboss");
         if (pluginCommand == null) {
@@ -227,6 +231,7 @@ public final class YknBossPlugin extends JavaPlugin {
         if (arenaManager != null) arenaManager.shutdown();
         if (endsunArenaManager != null) endsunArenaManager.shutdown();
         if (endWitchArenaManager != null) endWitchArenaManager.shutdown();
+        if (raidLoot != null) raidLoot.shutdown();
         if (boneDragonManager != null) boneDragonManager.shutdown();
         if (endsunGuardManager != null) endsunGuardManager.shutdown();
         if (endWitchManager != null) endWitchManager.shutdown();
@@ -259,6 +264,7 @@ public final class YknBossPlugin extends JavaPlugin {
         endWitchArenaManager.reload(endWitchArenaSettings);
         partyManager.reload(partySettings);
         raidSidebar.reload();
+        raidLoot.reload();
         for (var player : getServer().getOnlinePlayers()) {
             if (arenaManager.syncRaidSidebar(player)
                     || endsunArenaManager.syncRaidSidebar(player)
@@ -1083,6 +1089,10 @@ public final class YknBossPlugin extends JavaPlugin {
 
     public RaidSidebarService raidSidebar() {
         return raidSidebar;
+    }
+
+    public RaidLootService raidLoot() {
+        return raidLoot;
     }
 
     public SpecialItemManager specialItemManager() {

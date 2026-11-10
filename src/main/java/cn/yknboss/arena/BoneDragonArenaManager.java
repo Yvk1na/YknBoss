@@ -679,6 +679,10 @@ public final class BoneDragonArenaManager {
             instance.xpAwarded = true;
             plugin.slayer().awardVictory("bone_dragon", Set.copyOf(instance.eligibleParticipants),
                     boss.damageContributions());
+            markClearTime(instance);
+            plugin.raidLoot().spawnChest("bone_dragon", instance.sessionKey,
+                    monumentFocus(boss.location().getWorld()), instance.clearTicks,
+                    Set.copyOf(instance.eligibleParticipants), boss.damageContributions());
         }
         plugin.raidSidebar().finish(instance.sessionKey, true, boss.damageContributions());
         instance.activeBossId = null;
@@ -750,6 +754,7 @@ public final class BoneDragonArenaManager {
             }
         }
         plugin.raidSidebar().close(completedSessionId);
+        plugin.raidLoot().close(completedSessionId);
         instance.participants.clear();
         instance.sessionKey = null;
 
@@ -1034,6 +1039,8 @@ public final class BoneDragonArenaManager {
         instance.bossHealthMultiplier = 1.0;
         instance.eligibleParticipants.clear();
         instance.xpAwarded = false;
+        instance.challengeStartTick = -1;
+        instance.clearTicks = -1;
         for (BukkitTask task : instance.respawnTasks.values()) task.cancel();
         instance.respawnTasks.clear();
         instance.deadPlayers.clear();
@@ -1054,12 +1061,14 @@ public final class BoneDragonArenaManager {
         ArenaInstance instance = instanceForWorld(boss.location().getWorld());
         if (instance == null || instance.activeBossId == null || !instance.activeBossId.equals(boss.id())) return;
         cancelChallengeTimer(instance);
+        markClearTime(instance);
         plugin.raidSidebar().settling(instance.sessionKey, boss.damageContributions());
     }
 
     private void startChallengeTimer(ArenaInstance instance) {
         cancelChallengeTimer(instance);
         if (instance.sessionKey == null || instance.participants.isEmpty() || instance.activeBossId == null) return;
+        if (instance.challengeStartTick < 0) instance.challengeStartTick = Bukkit.getCurrentTick();
         int durationTicks = instance.challengeDurationTicks > 0
                 ? instance.challengeDurationTicks
                 : settings.challengeDurationTicks(activeParticipantCount(instance, Bukkit.getWorld(instance.worldName)));
@@ -1134,6 +1143,13 @@ public final class BoneDragonArenaManager {
                 && instanceForWorld(player.getWorld()) == instance;
     }
 
+    private void markClearTime(ArenaInstance instance) {
+        if (instance.clearTicks >= 0) return;
+        instance.clearTicks = instance.challengeStartTick < 0
+                ? Math.max(0, instance.challengeDurationTicks)
+                : Math.max(0, Bukkit.getCurrentTick() - instance.challengeStartTick);
+    }
+
     private void cancelChallengeTimer(ArenaInstance instance) {
         BukkitTask task = instance.challengeTask;
         instance.challengeTask = null;
@@ -1175,6 +1191,8 @@ public final class BoneDragonArenaManager {
         private BukkitTask challengeTask;
         private int challengeDurationTicks;
         private double bossHealthMultiplier = 1.0;
+        private int challengeStartTick = -1;
+        private int clearTicks = -1;
 
         private ArenaInstance(int slot, String worldName) {
             this.slot = slot;
