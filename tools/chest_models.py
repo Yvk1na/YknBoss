@@ -43,6 +43,28 @@ def split_at(element, seam):
     return lower, upper
 
 
+PLANE = {"up": (1,"to"), "down": (1,"from"), "north": (2,"from"),
+         "south": (2,"to"), "west": (0,"from"), "east": (0,"to")}
+
+
+def coplanar_cover(element, side, group):
+    """True when another textured face in the group lies on the same plane and overlaps."""
+    if any(element.get("rotation", [0,0,0])):
+        return False
+    axis, end = PLANE[side]
+    others = [i for i in range(3) if i != axis]
+    for e in group:
+        if e is element or any(e.get("rotation", [0,0,0])):
+            continue
+        face = e.get("faces", {}).get(side)
+        if not face or face.get("texture") is None or abs(e[end][axis]-element[end][axis]) > 1e-6:
+            continue
+        if all(min(e["to"][k], element["to"][k]) - max(e["from"][k], element["from"][k]) > 1e-6
+               for k in others):
+            return True
+    return False
+
+
 def treasure_texture(source, tier):
     palette = {
         "copper": ("#ffd38b", "#ed9a42", "#b86b2f", "#fff0ba", "#ffcb66"),
@@ -142,10 +164,6 @@ def generate(source, tier):
     interior("wall_east", [x1,floor_y,z0], [x1,seam,z1], "west")
     interior("wall_north", [x0,floor_y,z0], [x1,seam,z0], "south")
     interior("wall_south", [x0,floor_y,z1], [x1,seam,z1], "north")
-    # Dark underside of the lid over the mouth, just below the seam so it never
-    # coincides with the lid plate's own bottom face; its gold rim stays visible.
-    interior("lid_underside", [x0,seam-.25,z0], [x1,seam-.25,z1], "down")
-    lid.append(base.pop())
     # The source lid rested on the body, so its bottoms (and faces pressed against the
     # body) were untextured; once it swings open they are see-through holes. Give every
     # lid part all six faces, borrowing the opposite side's texture.
@@ -158,10 +176,85 @@ def generate(source, tier):
         textured = [f for f in faces_map.values() if f.get("texture") is not None]
         for side in opposite:
             face = faces_map.get(side)
-            if face is None or face.get("texture") is None:
+            if (face is None or face.get("texture") is None) and not coplanar_cover(element, side, lid):
                 other = faces_map.get(opposite[side])
                 donor = other if other and other.get("texture") is not None else textured[0]
                 faces_map[side] = copy.deepcopy(donor)
+    # Lid bottom: a single layer of non-overlapping tiles just below the seam. The lid
+    # parts resting on the seam (plate, corner posts, body top) overlap each other, so
+    # their own coplanar bottom faces z-fought and flickered in game.
+    bottom_y = seam-.05
+    seat = [e for e in lid if e["from"][1] == seam and not any(e.get("rotation", [0,0,0]))
+            and e["name"] != "lid_lining" and not e["name"].startswith("interior_")]
+    xs = sorted({v for e in seat for v in (e["from"][0], e["to"][0])} | {x0, x1})
+    zs = sorted({v for e in seat for v in (e["from"][2], e["to"][2])} | {z0, z1})
+    tiles = []
+    for a,A in zip(xs, xs[1:]):
+        for b,B in zip(zs, zs[1:]):
+            cx, cz = (a+A)/2, (b+B)/2
+            owner = next((e for e in seat if e["from"][0] <= cx <= e["to"][0]
+                          and e["from"][2] <= cz <= e["to"][2]), None)
+            if owner is None:
+                continue
+            if x0 <= cx <= x1 and z0 <= cz <= z1:
+                uv = interior_uv
+            else:
+                # Sub-rectangle of the owner's own bottom texture (down face: u along +x,
+                # v from the +z edge towards -z, matching the preview renderer).
+                u,v,U,V = owner["faces"]["down"]["uv"]
+                ex,EX,ez,EZ = owner["from"][0], owner["to"][0], owner["from"][2], owner["to"][2]
+                uv = [u+(a-ex)/(EX-ex)*(U-u), v+(EZ-B)/(EZ-ez)*(V-v),
+                      u+(A-ex)/(EX-ex)*(U-u), v+(EZ-b)/(EZ-ez)*(V-v)]
+            faces_map = {s2: {"uv": [0,0,0,0], "texture": None}
+                         for s2 in ("north","east","south","west","up","down")}
+            faces_map["down"] = {"uv": uv, "texture": 0}
+            tiles.append({"name": f"lid_bottom_{len(tiles)}", "type": "cube",
+                          "uuid": uid(f"{tier}/lid_bottom/{a}/{b}"),
+                          "from": [a,bottom_y,b], "to": [A,bottom_y,B], "origin": [0,0,0],
+                          "rotation": [0,0,0], "visibility": True, "export": True,
+                          "box_uv": False, "faces": faces_map})
+    for e in seat:
+        e["faces"]["down"] = {"uv": [0,0,0,0], "texture": None}
+    lid.extend(tiles)
+    # A lid part whose (newly textured) bottom lies on a base bottom when closed would
+    # z-fight (gold's lock plate vs. the body's underside): lift it imperceptibly.
+    for e in lid:
+        if e["faces"].get("down", {}).get("texture") is not None and coplanar_cover(e, "down", base):
+            e["from"][1] += .01
+    # Same for the base's top at the seam: gold's mouth rims overlap the corner-post
+    # caps and z-fought once the lid was open. Re-tile it without overlaps.
+    top = [e for e in base if e["to"][1] == seam and not any(e.get("rotation", [0,0,0]))
+           and e["faces"].get("up", {}).get("texture") is not None
+           and not e["name"].startswith("interior_")]
+    rims = [e for e in top if e["name"].startswith("mouth_rim_")]
+    ordered = [e for e in top if e not in rims] + rims
+    xs = sorted({v for e in top for v in (e["from"][0], e["to"][0])} | {x0, x1})
+    zs = sorted({v for e in top for v in (e["from"][2], e["to"][2])} | {z0, z1})
+    for a,A in zip(xs, xs[1:]):
+        for b,B in zip(zs, zs[1:]):
+            cx, cz = (a+A)/2, (b+B)/2
+            if x0 < cx < x1 and z0 < cz < z1:
+                continue
+            owner = next((e for e in ordered if e["from"][0] <= cx <= e["to"][0]
+                          and e["from"][2] <= cz <= e["to"][2]), None)
+            if owner is None:
+                continue
+            u,v,U,V = owner["faces"]["up"]["uv"]
+            ex,EX,ez,EZ = owner["from"][0], owner["to"][0], owner["from"][2], owner["to"][2]
+            uv = [u+(a-ex)/(EX-ex)*(U-u), v+(b-ez)/(EZ-ez)*(V-v),
+                  u+(A-ex)/(EX-ex)*(U-u), v+(B-ez)/(EZ-ez)*(V-v)]
+            faces_map = {s2: {"uv": [0,0,0,0], "texture": None}
+                         for s2 in ("north","east","south","west","up","down")}
+            faces_map["up"] = {"uv": uv, "texture": 0}
+            base.append({"name": f"base_top_{a}_{b}", "type": "cube",
+                         "uuid": uid(f"{tier}/base_top/{a}/{b}"),
+                         "from": [a,seam,b], "to": [A,seam,B], "origin": [0,0,0],
+                         "rotation": [0,0,0], "visibility": True, "export": True,
+                         "box_uv": False, "faces": faces_map})
+    for e in top:
+        e["faces"]["up"] = {"uv": [0,0,0,0], "texture": None}
+    for e in rims:
+        base.remove(e)
     treasure = []
     def cube(name, lower, upper, uv):
         treasure.append({"name": "treasure_"+name, "type": "cube", "uuid": uid(tier+"/"+name),

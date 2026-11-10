@@ -64,6 +64,58 @@ class ChestModelTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"copper", "silver", "gold"})
+    void noCoplanarOverlappingHorizontalFaces(String tier) throws Exception {
+        // Overlapping textured up/down faces on the same plane z-fight (flicker) in game,
+        // e.g. the opened lid's corners or the mouth rim over the corner posts.
+        var root =
+                com.google.gson.JsonParser.parseString(
+                                Files.readString(
+                                        Path.of(
+                                                "packs/bettermodel/models/yknboss_chest_"
+                                                        + tier
+                                                        + ".bbmodel")))
+                        .getAsJsonObject();
+        var flat = new java.util.ArrayList<com.google.gson.JsonObject>();
+        for (var raw : root.getAsJsonArray("elements")) {
+            var e = raw.getAsJsonObject();
+            boolean rotated = false;
+            if (e.has("rotation")) {
+                for (var r : e.getAsJsonArray("rotation")) rotated |= r.getAsDouble() != 0;
+            }
+            if (!rotated) flat.add(e);
+        }
+        for (String side : List.of("up", "down")) {
+            String end = side.equals("up") ? "to" : "from";
+            for (int i = 0; i < flat.size(); i++) {
+                for (int j = i + 1; j < flat.size(); j++) {
+                    var a = flat.get(i);
+                    var b = flat.get(j);
+                    if (!textured(a, side) || !textured(b, side)) continue;
+                    if (Math.abs(coord(a, end, 1) - coord(b, end, 1)) > 1e-6) continue;
+                    double ox = Math.min(coord(a, "to", 0), coord(b, "to", 0))
+                            - Math.max(coord(a, "from", 0), coord(b, "from", 0));
+                    double oz = Math.min(coord(a, "to", 2), coord(b, "to", 2))
+                            - Math.max(coord(a, "from", 2), coord(b, "from", 2));
+                    assertFalse(ox > 1e-6 && oz > 1e-6,
+                            tier + " " + side + " faces overlap: " + a.get("name") + " / " + b.get("name"));
+                }
+            }
+        }
+    }
+
+    private static boolean textured(com.google.gson.JsonObject element, String side) {
+        var face = element.getAsJsonObject("faces").get(side);
+        return face != null && face.isJsonObject()
+                && face.getAsJsonObject().has("texture")
+                && !face.getAsJsonObject().get("texture").isJsonNull();
+    }
+
+    private static double coord(com.google.gson.JsonObject element, String key, int axis) {
+        return element.getAsJsonArray(key).get(axis).getAsDouble();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"copper", "silver", "gold"})
     void betterModel341ParsesBonesBrightnessAndHeldOpeningAnimation(String tier) throws Exception {
         var model =
                 ModelData.GSON.fromJson(
