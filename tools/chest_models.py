@@ -94,8 +94,10 @@ def generate(source, tier):
     base, lid = [], []
     for index, original in enumerate(source["elements"]):
         element = copy.deepcopy(original)
-        # Whole locks hang below the seam but must travel with the lid.
-        lock = index in ({0,1} if tier == "gold" else {0})
+        # Copper/silver hasps cross the seam and travel with the lid. Gold's lock sits
+        # wholly on the body (with a 1px gap below the lid), so it stays on the base;
+        # moving it left a detached floating diamond above the opened lid.
+        lock = tier != "gold" and index == 0
         if lock or element["from"][1] >= seam:
             lid.append(element)
         elif element["to"][1] <= seam:
@@ -113,8 +115,8 @@ def generate(source, tier):
                 lining = copy.deepcopy(original)
                 lining.update(name="lid_lining", uuid=uid("gold/lid_lining"),
                               **{"from": [-10,seam,-9], "to": [10,seam,9]})
-                lining["faces"] = {"up": {"uv": [42,2,62,20], "texture": 0},
-                                   "down": {"uv": [42,2,62,20], "texture": 0}}
+                # Only the up face: a down face here z-fought the lid plate's bottom.
+                lining["faces"] = {"up": {"uv": [42,2,62,20], "texture": 0}}
                 lid.append(lining)
             base.append(element)
         else:
@@ -140,6 +142,10 @@ def generate(source, tier):
     interior("wall_east", [x1,floor_y,z0], [x1,seam,z1], "west")
     interior("wall_north", [x0,floor_y,z0], [x1,seam,z0], "south")
     interior("wall_south", [x0,floor_y,z1], [x1,seam,z1], "north")
+    # Dark underside of the lid over the mouth, just below the seam so it never
+    # coincides with the lid plate's own bottom face; its gold rim stays visible.
+    interior("lid_underside", [x0,seam-.02,z0], [x1,seam-.02,z1], "down")
+    lid.append(base.pop())
     treasure = []
     def cube(name, lower, upper, uv):
         treasure.append({"name": "treasure_"+name, "type": "cube", "uuid": uid(tier+"/"+name),

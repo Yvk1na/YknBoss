@@ -1702,6 +1702,90 @@
       "uuid": "892c84a9-de66-5f7d-b33c-419aa0e02d43"
     },
     {
+      "name": "interior_lid_underside",
+      "type": "cube",
+      "uuid": "b3b7793c-7b30-508d-a474-274c425eec82",
+      "from": [
+        -7.5,
+        8.98,
+        -8
+      ],
+      "to": [
+        8.5,
+        8.98,
+        8
+      ],
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "visibility": true,
+      "export": true,
+      "box_uv": false,
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            12,
+            0,
+            14,
+            2
+          ],
+          "texture": 0
+        }
+      }
+    },
+    {
       "name": "treasure_coins",
       "type": "cube",
       "uuid": "1861544d-dbf0-521b-8e01-7f86d6e7725c",
@@ -2135,7 +2219,8 @@
         "d8a430df-21c7-464d-979c-17f5a9eab960",
         "85e53741-59c6-40f6-a0ce-089a5463a5eb",
         "dca80a41-db95-467c-8544-30de1cd2e922",
-        "892c84a9-de66-5f7d-b33c-419aa0e02d43"
+        "892c84a9-de66-5f7d-b33c-419aa0e02d43",
+        "b3b7793c-7b30-508d-a474-274c425eec82"
       ]
     }
   ],
