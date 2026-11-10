@@ -14,6 +14,9 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 TIERS = ("copper", "silver", "gold")
+# Source element indices of the hollowed chest body, and the open mouth in model pixels.
+BODY = {"copper": {13}, "silver": {14}, "gold": set()}
+OPENING = {"copper": (-7.5, 8.5, -8, 8), "silver": (-7.5, 8.5, -9, 9), "gold": (-10, 10, -9, 9)}
 
 
 def uid(name):
@@ -63,7 +66,7 @@ def treasure_texture(source, tier):
                     used.update(area)
                     return [x,y,x+size,y+size]
         raise AssertionError(f"No unused transparent atlas area for {tier}/{size}")
-    coin_uv, gem_uv = reserve(8), reserve(4)
+    coin_uv, gem_uv, interior_uv = reserve(8), reserve(4), reserve(2)
     coins = Image.new("RGBA", (8,8), palette[2])
     draw = ImageDraw.Draw(coins)
     for y in range(0,8,4):
@@ -76,14 +79,16 @@ def treasure_texture(source, tier):
     ImageDraw.Draw(gem).line((0,0,2,0), fill=palette[3])
     image.paste(coins, tuple(coin_uv[:2]))
     image.paste(gem, tuple(gem_uv[:2]))
+    interior = {"copper": "#3b2616", "silver": "#2e3b45", "gold": "#5c3c12"}[tier]
+    image.paste(Image.new("RGBA", (2,2), interior), tuple(interior_uv[:2]))
     encoded = BytesIO()
     image.save(encoded, format="PNG")
-    return "data:image/png;base64,"+base64.b64encode(encoded.getvalue()).decode(), coin_uv, gem_uv
+    return "data:image/png;base64,"+base64.b64encode(encoded.getvalue()).decode(), coin_uv, gem_uv, interior_uv
 
 
 def generate(source, tier):
     model = copy.deepcopy(source)
-    texture, coin_uv, gem_uv = treasure_texture(source, tier)
+    texture, coin_uv, gem_uv, interior_uv = treasure_texture(source, tier)
     seam = 17 if tier == "gold" else 9
     hinge = [0,seam,11] if tier == "gold" else [10.5,seam,0]
     base, lid = [], []
@@ -115,8 +120,26 @@ def generate(source, tier):
         else:
             assert not any(element.get("rotation", [0,0,0]))
             lower, upper = split_at(element, seam)
+            if index not in BODY[tier]:
+                # Corner posts are solid: only the chest body is hollowed into the mouth.
+                lower["faces"]["up"] = copy.deepcopy(original["faces"]["up"])
             base.append(lower)
             lid.append(upper)
+    # Inner floor and four inward-facing walls, so the open mouth never shows the
+    # back-face-culled inside of the body (see-through to the ground in game).
+    x0,x1,z0,z1 = OPENING[tier]
+    floor_y = seam-2
+    def interior(name, lower, upper, side):
+        faces_map = {s: {"uv": [0,0,0,0], "texture": None} for s in ("north","east","south","west","up","down")}
+        faces_map[side] = {"uv": interior_uv, "texture": 0}
+        base.append({"name": "interior_"+name, "type": "cube", "uuid": uid(tier+"/interior/"+name),
+                     "from": lower, "to": upper, "origin": [0,0,0], "rotation": [0,0,0],
+                     "visibility": True, "export": True, "box_uv": False, "faces": faces_map})
+    interior("floor", [x0,floor_y,z0], [x1,floor_y,z1], "up")
+    interior("wall_west", [x0,floor_y,z0], [x0,seam,z1], "east")
+    interior("wall_east", [x1,floor_y,z0], [x1,seam,z1], "west")
+    interior("wall_north", [x0,floor_y,z0], [x1,seam,z0], "south")
+    interior("wall_south", [x0,floor_y,z1], [x1,seam,z1], "north")
     treasure = []
     def cube(name, lower, upper, uv):
         treasure.append({"name": "treasure_"+name, "type": "cube", "uuid": uid(tier+"/"+name),
