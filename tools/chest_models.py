@@ -98,16 +98,6 @@ def generate(source, tier):
         # that touched the body were untextured (hidden when closed) and show as holes
         # once the lid swings open, so give them the opposite side's texture.
         lock = index in ({0,1} if tier == "gold" else {0})
-        if lock:
-            opposite = {"north": "south", "south": "north", "east": "west",
-                        "west": "east", "up": "down", "down": "up"}
-            textured = [f for f in element["faces"].values() if f.get("texture") is not None]
-            for side in opposite:
-                face = element["faces"].get(side)
-                if face is None or face.get("texture") is None:
-                    other = element["faces"].get(opposite[side])
-                    donor = other if other and other.get("texture") is not None else textured[0]
-                    element["faces"][side] = copy.deepcopy(donor)
         if lock or element["from"][1] >= seam:
             lid.append(element)
         elif element["to"][1] <= seam:
@@ -156,6 +146,22 @@ def generate(source, tier):
     # coincides with the lid plate's own bottom face; its gold rim stays visible.
     interior("lid_underside", [x0,seam-.25,z0], [x1,seam-.25,z1], "down")
     lid.append(base.pop())
+    # The source lid rested on the body, so its bottoms (and faces pressed against the
+    # body) were untextured; once it swings open they are see-through holes. Give every
+    # lid part all six faces, borrowing the opposite side's texture.
+    opposite = {"north": "south", "south": "north", "east": "west",
+                "west": "east", "up": "down", "down": "up"}
+    for element in lid:
+        if element["name"] == "lid_lining" or element["name"].startswith("interior_"):
+            continue
+        faces_map = element.setdefault("faces", {})
+        textured = [f for f in faces_map.values() if f.get("texture") is not None]
+        for side in opposite:
+            face = faces_map.get(side)
+            if face is None or face.get("texture") is None:
+                other = faces_map.get(opposite[side])
+                donor = other if other and other.get("texture") is not None else textured[0]
+                faces_map[side] = copy.deepcopy(donor)
     treasure = []
     def cube(name, lower, upper, uv):
         treasure.append({"name": "treasure_"+name, "type": "cube", "uuid": uid(tier+"/"+name),
@@ -321,9 +327,9 @@ def main():
             a,b = before.tobytes(),after.tobytes()
             changed = sum(a[i:i+4] != b[i:i+4] for i in range(0,len(a),4))
             changes.append(changed)
-            # Gold's diamond lock had untextured upper faces in the source; filling them
-            # (so the opened lid has no holes) is visible on a pixel or two when closed.
-            assert changed <= (4 if tier == "gold" else 0), (tier,yaw,changed)
+            # Gold's source lid had untextured faces (lock top, roof undersides) that showed
+            # as see-through slivers even when closed; filling them changes a few dozen pixels.
+            assert changed <= (64 if tier == "gold" else 0), (tier,yaw,changed)
         if not (args.check or args.preview_only):
             path.write_text(json.dumps(model,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
         closed,opened = render(model),render(model,105)
