@@ -113,6 +113,24 @@ slayer:
 # 离开副本时仍未领取的奖励会自动发放，离线成员在下次上线时补发。
 raid-loot:
   enabled: true
+  # 原版音效名（Bukkit 常量名），每项按 sound / volume / pitch 配置；显式 [] 可静音。
+  # 旧配置缺键时由代码按以下默认值兜底；无效名称警告一次并跳过该项。
+  sounds:
+    # 第一个合格玩家实际打开领取界面时在箱口播放，全体附近玩家可听。
+    open:
+      - {sound: BLOCK_CHEST_OPEN, volume: 1.0, pitch: 0.8}
+      - {sound: BLOCK_ENDER_CHEST_OPEN, volume: 0.6, pitch: 1.2}
+    # 仅领取者可听；自动发放和离线上线补发也按宝箱品质播放。
+    claim:
+      copper:
+        - {sound: ENTITY_ITEM_PICKUP, volume: 1.0, pitch: 1.0}
+        - {sound: BLOCK_NOTE_BLOCK_BELL, volume: 0.8, pitch: 1.4}
+      silver:
+        - {sound: BLOCK_AMETHYST_BLOCK_CHIME, volume: 1.0, pitch: 1.2}
+        - {sound: ENTITY_PLAYER_LEVELUP, volume: 0.7, pitch: 1.4}
+      gold:
+        - {sound: UI_TOAST_CHALLENGE_COMPLETE, volume: 0.8, pitch: 1.0}
+        - {sound: ENTITY_FIREWORK_ROCKET_TWINKLE, volume: 1.0, pitch: 1.0}
   # 个人伤害达到“全队总伤害 ÷ 开战人数 × 此比例”才有奖励；0 表示人人有份。
   minimum-fair-share: 0.3
   # 所有掉落项都未命中时，保底给予一件随机基础素材（取该项的最小数量）。

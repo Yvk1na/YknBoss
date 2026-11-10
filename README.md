@@ -54,6 +54,17 @@
 - `yknanvil:` 通过反射调用启用插件的 `createItem(String,int)`，以数量 1 创建模板并沿用缓存、逐次克隆发奖；物品与 `/yknanvil give` 相同。未知 ID 或接口异常沿用其他来源的跳过逻辑，不影响其余奖励。
 - 四格超出时依次保留 `core → rare → forge → base`，同类保留原始概率较低的物品；`guarantee-one-base` 仍仅在没有任何奖励时从 base 保底，不抽锻造道具。
 - 默认银宝箱幸运石/保护符/守护卷轴概率：骨龙 **25% / 5% / 3%**，阿努赫 **30% / 6% / 4%**，伊芙蕾雅 **35% / 7% / 5%**；均为数量 1、无单项保底。铜/银/金宝箱的 forge 倍率分别 **0.5 / 1.0 / 1.5**，旧配置缺项按 1.0。已有配置不自动改写，请将默认配置的九个新条目及倍率合并到自定义掉落表。
+- 首名有奖励的玩家实际打开领取界面后，箱盖在 0.5 秒内后翻 105° 并保持，直到副本结算移除；被取消或替换的 GUI 不触发。后续右键不重复动画、开盖音效和爆发粒子。原版外观回退仍播放音效与粒子。
+- 铜箱开启后有电火花与间歇火苗，银箱有白色上升光点和烟花闪点，金箱有 `#FFD24A` 细光柱、白色光点与间歇图腾星光。复用插件现有 tick，每 5 tick 检查一次，仅同世界 32 格内有玩家时生成；移除会话后立即停止。
+- `treasure` 子骨骼在箱口下方 1–2 像素，使用原 64×64 贴图未使用的透明区域绘制金币和宝石。BetterModel 3.4.1 支持骨骼亮度：模型 `light_emission: 15`，运行时另对该骨骼及子节点设置 block/sky 亮度 15；这是宝物自身满亮，不会照亮世界方块。
+- 音效列表在 `raid-loot.sounds.open` 与 `raid-loot.sounds.claim.<copper|silver|gold>`，每项为 `{sound, volume, pitch}`。开盖为箱子声 + 末影箱声，领取按铜/银/金分别为拾取 + 铃声、紫水晶 + 升级、挑战完成 + 烟花。缺键使用代码默认值，显式 `[]` 静音，无效音效名警告一次并跳过。直接领取、在线自动发放及上线补发都仅对领取者播放对应品质音效。
+- 新版 `pending-loot.yml` 按批次保存品质，支持一名玩家累积不同品质。旧版只有物品、无法还原品质的记录仍完整补发，使用银箱音效。
+
+### 宝箱模型制作与验证
+
+原始闭合模型保存在 `tools/chest_sources/*.bbmodel`；运行 `python -X utf8 tools/chest_models.py` 可重复生成三个打包模型和 `build/preview/chest-{copper,silver,gold}-{closed,open}.png`，总览为 `build/preview/chests-closed-open.png`。需要 Pillow，无需其它 Python 包。
+
+铜、银箱锁扣朝 −X，铰链为 `(10.5, 9, 0)`，沿 Z 轴向后翻；金箱锁扣朝 −Z，铰链为 `(0, 17, 11)`，沿 X 轴向后翻。跨越开口的原始方块沿箱口裁切并保持 UV 连续，金箱原实心顶面拆成箱沿和随盖移动的内衬。构建会验证生成结果无过期、原模型与新模型闭合状态四个视角均为 0 像素差异，并通过实际 BetterModel 3.4.1 解析器检查骨骼、满亮度与 hold 动画。完整检查仍只需 `deploy.cmd -BuildOnly`。
 
 ## 特殊物品
 
@@ -73,10 +84,10 @@
 
 产物：
 
-- `build/libs/YknBoss-2.0.19-obfuscated.jar`
-- `build/distributions/YknBoss-BetterModel-Pack-2.0.19.zip`
-- `build/distributions/YknBoss-CraftEngine-Pack-2.0.19.zip`
-- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.19.zip`
+- `build/libs/YknBoss-2.0.20-obfuscated.jar`
+- `build/distributions/YknBoss-BetterModel-Pack-2.0.20.zip`
+- `build/distributions/YknBoss-CraftEngine-Pack-2.0.20.zip`
+- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.20.zip`
 
 服务端也需要使用 Java 25 启动。
 
@@ -99,7 +110,7 @@ CraftEngine 和 ItemsAdder 都是软依赖，不需要同时安装；目前仅�
 ### BetterModel（骨龙与烬日冥卫必需）
 
 1. 将用户提供的 `bettermodel-3.4.1-paper.jar` 放入服务端 `plugins/`。
-2. 解压 `YknBoss-BetterModel-Pack-2.0.19.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
+2. 解压 `YknBoss-BetterModel-Pack-2.0.20.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
 3. 启动服务器，或执行 `/bettermodel reload`。
 4. 执行 `/yknboss spawn bone_dragon`。
 

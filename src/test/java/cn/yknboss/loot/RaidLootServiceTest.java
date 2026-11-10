@@ -233,7 +233,7 @@ public class RaidLootServiceTest {
         assertEquals(1.5, config.getDouble("raid-loot.multipliers.gold.forge"));
         var descriptor = resource("/plugin.yml");
         assertTrue(descriptor.getStringList("softdepend").contains("YknAnvil"));
-        assertEquals("2.0.19", descriptor.getString("version"));
+        assertEquals("2.0.20", descriptor.getString("version"));
         assertEquals(
                 Category.FORGE,
                 service.parseEntry("test", Map.of("item", "yknanvil:scroll", "category", "FORGE"))

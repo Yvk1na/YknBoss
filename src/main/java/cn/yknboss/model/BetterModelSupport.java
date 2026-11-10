@@ -33,6 +33,7 @@ public final class BetterModelSupport {
         void setWingsVisible(boolean visible);
         void setRedGlow(boolean enabled);
         void setGlow(boolean enabled, int color);
+        void setBoneBrightness(String boneName, int block, int sky);
         void stabilizeScale();
         void setHitBoxDamageModifier(HitBoxDamageModifier modifier);
         void refresh();
@@ -85,7 +86,7 @@ public final class BetterModelSupport {
     }
 
     /**
-     * 附加没有任何动画的静态模型（例如通关宝箱），不会尝试播放初始动画。
+     * 附加默认静止的模型，不播放初始动画；返回实例仍可显式播放动画。
      */
     public Instance attachStatic(String modelId, Entity entity, float scale) {
         if (!compatible) {
@@ -270,6 +271,13 @@ public final class BetterModelSupport {
             enqueue(() -> tracker.update(
                     TrackerUpdateAction.brightness(15, 15),
                     MAGIC_EFFECT_BONES));
+        }
+
+        @Override
+        public void setBoneBrightness(String boneName, int block, int sky) {
+            if (!valid()) return;
+            enqueue(() -> tracker.update(TrackerUpdateAction.brightness(block, sky),
+                    BonePredicate.name(boneName).withChildren()));
         }
 
         @Override

@@ -135,6 +135,7 @@ public final class YknBossPlugin extends JavaPlugin {
             endWitchManager.tick();
             specialItemManager.tick();
             raidSidebar.tick();
+            raidLoot.tick();
         }, 1L, 1L);
         getServer().getScheduler().runTask(this, () -> {
             boneDragonManager.discoverLoadedBosses();

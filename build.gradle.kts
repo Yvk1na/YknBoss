@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "cn.yknboss"
-version = "2.0.19"
+version = "2.0.20"
 val pluginVersion = version.toString()
 
 repositories {
@@ -24,6 +24,12 @@ dependencies {
     testImplementation("org.yaml:snakeyaml:2.2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
     testImplementation("org.mockito:mockito-core:5.20.0")
+    testImplementation(files("libs/bettermodel-3.4.1-paper.jar"))
+    // Match BetterModel 3.4.1's paper-library when exercising its actual model parser.
+    testRuntimeOnly("org.semver4j:semver4j:6.0.0")
+    testRuntimeOnly("io.github.toxicity188:dynamicuv:1.2.2")
+    testRuntimeOnly("io.github.toxicity188:java-mesh:0.0.1")
+    testRuntimeOnly("com.github.ben-manes.caffeine:caffeine:3.2.4")
     testRuntimeOnly(files(configurations.compileClasspath))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.13.4")
 }
@@ -42,7 +48,14 @@ java {
     }
 }
 
+val validateChestModels by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "检查通关宝箱生成结果、闭合外观不变并渲染开盖预览"
+    commandLine("python", "-X", "utf8", "tools/chest_models.py", "--check")
+}
+
 tasks.test {
+    dependsOn(validateChestModels)
     useJUnitPlatform()
 }
 

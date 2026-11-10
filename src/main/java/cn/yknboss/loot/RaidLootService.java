@@ -5,6 +5,7 @@ import cn.yknboss.model.BetterModelSupport;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -104,11 +105,13 @@ public final class RaidLootService implements Listener {
     private final NamespacedKey chestKey;
     private final File pendingFile;
     private final Map<UUID, ChestSession> sessions = new HashMap<>();
-    private final Map<UUID, List<ItemStack>> pending = new HashMap<>();
+    private final Map<UUID, List<PendingLoot>> pending = new HashMap<>();
     private final Map<String, ItemStack> templates = new HashMap<>();
     private final Set<String> warned = new HashSet<>();
     private final Map<String, List<Entry>> tables = new HashMap<>();
     private final EnumMap<Tier, Multipliers> multipliers = new EnumMap<>(Tier.class);
+    private RaidLootSounds sounds;
+    private long effectTicks;
 
     private boolean enabled;
     private double minimumFairShare;
@@ -136,6 +139,7 @@ public final class RaidLootService implements Listener {
 
         templates.clear();
         warned.clear();
+        sounds = new RaidLootSounds(config, plugin.getLogger(), warned);
         tables.clear();
         ConfigurationSection tableSection = config.getConfigurationSection("raid-loot.tables");
         if (tableSection != null) {
@@ -226,7 +230,6 @@ public final class RaidLootService implements Listener {
         sessions.put(sessionKey, session);
 
         world.spawnParticle(Particle.END_ROD, ground.clone().add(0.0, 1.0, 0.0), 60, 0.8, 0.8, 0.8, 0.04);
-        world.playSound(ground, Sound.BLOCK_ENDER_CHEST_OPEN, 2.0f, 0.8f);
         world.playSound(ground, Sound.ENTITY_PLAYER_LEVELUP, 1.5f, 1.2f);
         Component message = plugin.messages().component("loot.chest-appeared",
                 "time", formatDuration(clearSeconds),
@@ -240,9 +243,18 @@ public final class RaidLootService implements Listener {
         if (betterModel.available() && betterModel.hasModel(modelId)) {
             try {
                 session.model = betterModel.attachStatic(modelId, anchor, 1.0f);
+                session.model.setBoneBrightness("treasure", 15, 15);
                 return;
             } catch (RuntimeException | LinkageError exception) {
                 plugin.getLogger().warning("无法附加通关宝箱模型 " + modelId + "：" + exception.getMessage());
+                if (session.model != null) {
+                    try {
+                        session.model.close();
+                    } catch (RuntimeException | LinkageError ignored) {
+                        // The failed tracker may already be closed.
+                    }
+                    session.model = null;
+                }
             }
         } else if (warned.add("model:" + modelId)) {
             plugin.getLogger().warning("BetterModel 未加载通关宝箱模型 " + modelId
@@ -255,6 +267,74 @@ public final class RaidLootService implements Listener {
                     display.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
                             new Vector3f(1.5f, 1.5f, 1.5f), new Quaternionf()));
                 });
+    }
+
+    private static Location mouth(ChestSession session) {
+        double seam = session.tier == Tier.GOLD ? 17.0 : 9.0;
+        return session.anchor.getLocation().clone().add(0, seam / 16.0 + .02, 0);
+    }
+
+    private void openChest(ChestSession session) {
+        if (session.opened) return;
+        session.opened = true;
+        if (session.model != null) {
+            try {
+                session.model.playOnceAndHold("open");
+            } catch (RuntimeException | LinkageError exception) {
+                if (warned.add("open:" + session.tier.key)) {
+                    plugin.getLogger().warning("播放通关宝箱开盖动画失败：" + exception.getMessage());
+                }
+            }
+        }
+        if (session.anchor == null || !session.anchor.isValid()) return;
+        Location mouth = mouth(session);
+        sounds.open(mouth.getWorld(), mouth);
+        particles(session.tier, mouth, true);
+    }
+
+    /** Called by the plugin's existing one-tick loop; sessions own no extra scheduled tasks. */
+    public void tick() {
+        if (++effectTicks % 5 != 0) return;
+        for (ChestSession session : sessions.values()) {
+            if (!session.opened || session.anchor == null || !session.anchor.isValid()) continue;
+            Location mouth = mouth(session);
+            boolean nearby = mouth.getWorld().getPlayers().stream()
+                    .anyMatch(player -> player.getLocation().distanceSquared(mouth) <= 32 * 32);
+            if (nearby) particles(session.tier, mouth, false);
+        }
+    }
+
+    private void particles(Tier tier, Location mouth, boolean burst) {
+        World world = mouth.getWorld();
+        switch (tier) {
+            case COPPER -> {
+                world.spawnParticle(Particle.ELECTRIC_SPARK, mouth, burst ? 12 : 2, .3, .12, .3, .01);
+                if (burst || effectTicks % 20 == 0) {
+                    world.spawnParticle(Particle.FLAME, mouth, burst ? 3 : 1, .2, .05, .2, .005);
+                }
+            }
+            case SILVER -> {
+                risingRods(world, mouth, burst ? 12 : 1);
+                world.spawnParticle(Particle.FIREWORK, mouth, burst ? 8 : 1, .3, .18, .3, .01);
+            }
+            case GOLD -> {
+                world.spawnParticle(Particle.DUST, mouth.clone().add(0, .3, 0), burst ? 24 : 4,
+                        .08, .3, .08, 0, new Particle.DustOptions(Color.fromRGB(0xFFD24A), .7f));
+                risingRods(world, mouth, burst ? 12 : 1);
+                if (burst || effectTicks % 40 == 0) {
+                    world.spawnParticle(Particle.TOTEM_OF_UNDYING, mouth, burst ? 4 : 1, .3, .2, .3, .02);
+                }
+            }
+        }
+    }
+
+    private static void risingRods(World world, Location mouth, int count) {
+        var random = ThreadLocalRandom.current();
+        for (int i = 0; i < count; i++) {
+            Location point = mouth.clone().add(random.nextDouble(-.25, .25), .04, random.nextDouble(-.25, .25));
+            // count=0 uses the offsets as a velocity, so these rods rise instead of scattering.
+            world.spawnParticle(Particle.END_ROD, point, 0, 0, .03, 0, 1);
+        }
     }
 
     private Location groundBelow(Location focus) {
@@ -423,7 +503,7 @@ public final class RaidLootService implements Listener {
         open(event.getPlayer(), session);
     }
 
-    private void open(Player player, ChestSession session) {
+    void open(Player player, ChestSession session) {
         UUID playerId = player.getUniqueId();
         if (!session.rewards.containsKey(playerId)) {
             String key = session.claimed.contains(playerId) ? "loot.already-claimed"
@@ -436,11 +516,18 @@ public final class RaidLootService implements Listener {
                 "loot.gui-title", "quality", plugin.messages().plain("loot.quality." + session.tier.key)));
         holder.inventory = inventory;
         render(inventory, session.rewards.get(playerId));
-        player.openInventory(inventory);
-        player.playSound(player.getLocation(), Sound.BLOCK_CHEST_OPEN, 0.8f, 1.0f);
+        var view = player.openInventory(inventory);
+        // InventoryOpenEvent can cancel/replace the GUI. Such a click must not open the model.
+        if (view != null && player.getOpenInventory().getTopInventory() == inventory) {
+            if (session.opened) {
+                // Later openings only need personal feedback; the lid is already open.
+                player.playSound(player.getLocation(), Sound.BLOCK_CHEST_OPEN, 0.6f, 1.0f);
+            }
+            openChest(session);
+        }
     }
 
-    private void render(Inventory inventory, List<ItemStack> rewards) {
+    void render(Inventory inventory, List<ItemStack> rewards) {
         ItemStack filler = new ItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE);
         ItemMeta fillerMeta = filler.getItemMeta();
         fillerMeta.setHideTooltip(true);
@@ -489,7 +576,7 @@ public final class RaidLootService implements Listener {
         if (event.getView().getTopInventory().getHolder() instanceof LootHolder) event.setCancelled(true);
     }
 
-    private void claim(Player player, ChestSession session, LootHolder holder) {
+    void claim(Player player, ChestSession session, LootHolder holder) {
         UUID playerId = player.getUniqueId();
         List<ItemStack> rewards = session.rewards.get(playerId);
         if (rewards == null) {
@@ -502,7 +589,7 @@ public final class RaidLootService implements Listener {
             session.rewards.remove(playerId);
             session.claimed.add(playerId);
             player.closeInventory();
-            player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+            sounds.claim(player, session.tier);
             plugin.messages().send(player, "loot.claimed");
             return;
         }
@@ -538,9 +625,10 @@ public final class RaidLootService implements Listener {
         for (Map.Entry<UUID, List<ItemStack>> entry : session.rewards.entrySet()) {
             Player player = Bukkit.getPlayer(entry.getKey());
             if (player != null && player.isOnline()) {
-                deliver(player, entry.getValue(), "loot.auto-granted");
+                deliver(player, entry.getValue(), session.tier, "loot.auto-granted");
             } else {
-                pending.computeIfAbsent(entry.getKey(), ignored -> new ArrayList<>()).addAll(entry.getValue());
+                pending.computeIfAbsent(entry.getKey(), ignored -> new ArrayList<>())
+                        .add(new PendingLoot(session.tier, entry.getValue()));
                 pendingChanged = true;
             }
         }
@@ -549,8 +637,9 @@ public final class RaidLootService implements Listener {
         if (pendingChanged) savePending();
     }
 
-    private void deliver(Player player, List<ItemStack> items, String messageKey) {
+    private void deliver(Player player, List<ItemStack> items, Tier tier, String messageKey) {
         List<ItemStack> leftovers = addToInventory(player, items);
+        sounds.claim(player, tier);
         plugin.messages().send(player, messageKey);
         if (leftovers.isEmpty()) return;
         for (ItemStack leftover : leftovers) {
@@ -566,10 +655,12 @@ public final class RaidLootService implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Player player = Bukkit.getPlayer(playerId);
             if (player == null || !player.isOnline()) return;
-            List<ItemStack> items = pending.remove(playerId);
-            if (items == null || items.isEmpty()) return;
+            List<PendingLoot> batches = pending.remove(playerId);
+            if (batches == null || batches.isEmpty()) return;
             savePending();
-            deliver(player, items, "loot.pending-delivered");
+            for (PendingLoot batch : batches) {
+                deliver(player, batch.items(), batch.tier(), "loot.pending-delivered");
+            }
         }, 60L);
     }
 
@@ -577,7 +668,8 @@ public final class RaidLootService implements Listener {
         boolean pendingChanged = false;
         for (ChestSession session : List.copyOf(sessions.values())) {
             for (Map.Entry<UUID, List<ItemStack>> entry : session.rewards.entrySet()) {
-                pending.computeIfAbsent(entry.getKey(), ignored -> new ArrayList<>()).addAll(entry.getValue());
+                pending.computeIfAbsent(entry.getKey(), ignored -> new ArrayList<>())
+                        .add(new PendingLoot(session.tier, entry.getValue()));
                 pendingChanged = true;
             }
             session.rewards.clear();
@@ -595,13 +687,10 @@ public final class RaidLootService implements Listener {
         for (String key : players.getKeys(false)) {
             List<?> stored = players.getList(key);
             if (stored == null) continue;
-            List<ItemStack> items = new ArrayList<>();
-            for (Object value : stored) {
-                if (value instanceof ItemStack item && !item.getType().isAir()) items.add(item);
-            }
-            if (items.isEmpty()) continue;
+            List<PendingLoot> batches = PendingLoot.read(stored);
+            if (batches.isEmpty()) continue;
             try {
-                pending.put(UUID.fromString(key), items);
+                pending.put(UUID.fromString(key), batches);
             } catch (IllegalArgumentException ignored) {
                 plugin.getLogger().warning("pending-loot.yml 中存在无效的玩家 UUID：" + key);
             }
@@ -610,8 +699,11 @@ public final class RaidLootService implements Listener {
 
     private void savePending() {
         YamlConfiguration yaml = new YamlConfiguration();
-        for (Map.Entry<UUID, List<ItemStack>> entry : pending.entrySet()) {
-            if (!entry.getValue().isEmpty()) yaml.set("players." + entry.getKey(), entry.getValue());
+        yaml.set("version", 2);
+        for (Map.Entry<UUID, List<PendingLoot>> entry : pending.entrySet()) {
+            if (!entry.getValue().isEmpty()) {
+                yaml.set("players." + entry.getKey(), entry.getValue().stream().map(PendingLoot::serialize).toList());
+            }
         }
         try {
             yaml.save(pendingFile);
@@ -625,11 +717,11 @@ public final class RaidLootService implements Listener {
         return String.format(Locale.ROOT, "%d:%02d", clamped / 60, clamped % 60);
     }
 
-    private static final class LootHolder implements InventoryHolder {
+    static final class LootHolder implements InventoryHolder {
         private final UUID sessionKey;
         private Inventory inventory;
 
-        private LootHolder(UUID sessionKey) {
+        LootHolder(UUID sessionKey) {
             this.sessionKey = sessionKey;
         }
 
@@ -639,17 +731,18 @@ public final class RaidLootService implements Listener {
         }
     }
 
-    private static final class ChestSession {
-        private final UUID sessionKey;
-        private final Tier tier;
-        private final Map<UUID, List<ItemStack>> rewards = new HashMap<>();
-        private final Set<UUID> claimed = new HashSet<>();
-        private final Set<UUID> ineligible = new HashSet<>();
-        private Entity anchor;
-        private Entity fallbackDisplay;
-        private BetterModelSupport.Instance model;
+    static final class ChestSession {
+        final UUID sessionKey;
+        final Tier tier;
+        final Map<UUID, List<ItemStack>> rewards = new HashMap<>();
+        final Set<UUID> claimed = new HashSet<>();
+        final Set<UUID> ineligible = new HashSet<>();
+        Entity anchor;
+        Entity fallbackDisplay;
+        BetterModelSupport.Instance model;
+        boolean opened;
 
-        private ChestSession(UUID sessionKey, Tier tier) {
+        ChestSession(UUID sessionKey, Tier tier) {
             this.sessionKey = sessionKey;
             this.tier = tier;
         }
@@ -667,6 +760,39 @@ public final class RaidLootService implements Listener {
             if (anchor != null && anchor.isValid()) anchor.remove();
             fallbackDisplay = null;
             anchor = null;
+        }
+    }
+
+    record PendingLoot(Tier tier, List<ItemStack> items) {
+        PendingLoot {
+            items = List.copyOf(items);
+        }
+
+        Map<String, Object> serialize() {
+            return Map.of("tier", tier.key, "items", items);
+        }
+
+        static List<PendingLoot> read(List<?> stored) {
+            List<PendingLoot> batches = new ArrayList<>();
+            List<ItemStack> legacy = new ArrayList<>();
+            for (Object value : stored) {
+                if (value instanceof ItemStack item && !item.getType().isAir()) {
+                    legacy.add(item);
+                } else if (value instanceof Map<?, ?> map && map.get("items") instanceof List<?> raw) {
+                    Tier tier;
+                    try {
+                        tier = Tier.valueOf(String.valueOf(map.get("tier")).toUpperCase(Locale.ROOT));
+                    } catch (IllegalArgumentException ignored) {
+                        tier = Tier.SILVER;
+                    }
+                    List<ItemStack> items = raw.stream().filter(ItemStack.class::isInstance)
+                            .map(ItemStack.class::cast).filter(item -> !item.getType().isAir()).toList();
+                    if (!items.isEmpty()) batches.add(new PendingLoot(tier, items));
+                }
+            }
+            // Old pending-loot.yml did not store quality. Preserve its items with neutral silver sounds.
+            if (!legacy.isEmpty()) batches.addFirst(new PendingLoot(Tier.SILVER, legacy));
+            return batches;
         }
     }
 }
