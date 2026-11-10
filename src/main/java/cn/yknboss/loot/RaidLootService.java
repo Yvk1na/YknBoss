@@ -521,7 +521,8 @@ public final class RaidLootService implements Listener {
         if (view != null && player.getOpenInventory().getTopInventory() == inventory) {
             if (session.opened) {
                 // Later openings only need personal feedback; the lid is already open.
-                player.playSound(player.getLocation(), Sound.BLOCK_CHEST_OPEN, 0.6f, 1.0f);
+                // String key avoids touching the Sound registry (unit tests run without a server).
+                player.playSound(player.getLocation(), "minecraft:block.chest.open", 0.6f, 1.0f);
             }
             openChest(session);
         }
