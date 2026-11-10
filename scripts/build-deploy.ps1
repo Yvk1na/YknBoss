@@ -128,7 +128,7 @@ if ($LASTEXITCODE -ne 0) { throw "JDK 25 failed to start." }
 Write-Step "Building, obfuscating, and packaging plugin resources"
 Push-Location $ProjectRoot
 try {
-    & $GradleWrapper "--no-daemon" "clean" "obfuscate" "betterModelPack" "craftEnginePack" "itemsAdderPack"
+    & $GradleWrapper "--no-daemon" "clean" "test" "obfuscate" "betterModelPack" "craftEnginePack" "itemsAdderPack"
     if ($LASTEXITCODE -ne 0) { throw "Gradle build failed with exit code $LASTEXITCODE." }
 }
 finally {

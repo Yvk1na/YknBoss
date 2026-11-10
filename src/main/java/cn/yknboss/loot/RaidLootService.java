@@ -63,7 +63,7 @@ public final class RaidLootService implements Listener {
     private static final int CLOSE_SLOT = 16;
     private static final String MODEL_PREFIX = "yknboss_chest_";
 
-    private enum Tier {
+    enum Tier {
         COPPER("copper", 0.75, 0.5, 0.5),
         SILVER("silver", 1.0, 1.0, 1.0),
         GOLD("gold", 1.25, 1.25, 1.5);
@@ -81,17 +81,18 @@ public final class RaidLootService implements Listener {
         }
     }
 
-    private enum Category {
-        CORE, RARE, BASE
+    enum Category {
+        CORE, RARE, FORGE, BASE
     }
 
-    private record Entry(String item, Category category, double chance, int min, int max, int pity) { }
+    record Entry(String item, Category category, double chance, int min, int max, int pity) { }
 
-    private record Multipliers(double base, double core, double rare) {
+    private record Multipliers(double base, double core, double rare, double forge) {
         private double of(Category category) {
             return switch (category) {
                 case CORE -> core;
                 case RARE -> rare;
+                case FORGE -> forge;
                 case BASE -> base;
             };
         }
@@ -152,11 +153,12 @@ public final class RaidLootService implements Listener {
             multipliers.put(tier, new Multipliers(
                     Math.max(0.0, config.getDouble(path + "base", tier.defaultBase)),
                     Math.max(0.0, config.getDouble(path + "core", tier.defaultCore)),
-                    Math.max(0.0, config.getDouble(path + "rare", tier.defaultRare))));
+                    Math.max(0.0, config.getDouble(path + "rare", tier.defaultRare)),
+                    Math.max(0.0, config.getDouble(path + "forge", 1.0))));
         }
     }
 
-    private Entry parseEntry(String raid, Map<?, ?> raw) {
+    Entry parseEntry(String raid, Map<?, ?> raw) {
         Object item = raw.get("item");
         if (!(item instanceof String itemKey) || itemKey.isBlank()) {
             plugin.getLogger().warning("raid-loot.tables." + raid + " 中有掉落项缺少 item，已忽略。");
@@ -167,6 +169,7 @@ public final class RaidLootService implements Listener {
         Category category = switch (categoryName) {
             case "core" -> Category.CORE;
             case "rare" -> Category.RARE;
+            case "forge" -> Category.FORGE;
             default -> Category.BASE;
         };
         double chance = Math.max(0.0, Math.min(100.0, number(raw.get("chance"), 0.0)));
@@ -275,7 +278,7 @@ public final class RaidLootService implements Listener {
         return clearSeconds <= silver ? Tier.SILVER : Tier.COPPER;
     }
 
-    private List<ItemStack> roll(String raidKey, List<Entry> table, Tier tier, Player player) {
+    List<ItemStack> roll(String raidKey, List<Entry> table, Tier tier, Player player) {
         Multipliers multiplier = multipliers.get(tier);
         ThreadLocalRandom random = ThreadLocalRandom.current();
         List<Rolled> hits = new ArrayList<>();
@@ -302,7 +305,7 @@ public final class RaidLootService implements Listener {
             }
         }
         if (hits.size() > REWARD_SLOTS.length) {
-            // 奖励格只有四个：优先保留核心与稀有物品，其次保留概率较低的基础素材。
+            // 奖励格只有四个：核心 → 稀有 → 锻造道具 → 基础素材；同类优先低概率物品。
             hits.sort(Comparator.<Rolled, Category>comparing(rolled -> rolled.entry().category())
                     .thenComparingDouble(rolled -> rolled.entry().chance()));
             hits = new ArrayList<>(hits.subList(0, REWARD_SLOTS.length));
@@ -355,11 +358,20 @@ public final class RaidLootService implements Listener {
         return switch (source) {
             case "mythic" -> resolveMythic(id);
             case "eco" -> resolveEco(id);
+            case "yknanvil" -> resolveAnvil(id);
             default -> {
                 Material material = Material.matchMaterial(id);
                 yield material == null || !material.isItem() ? null : new ItemStack(material);
             }
         };
+    }
+
+    private ItemStack resolveAnvil(String id) throws ReflectiveOperationException {
+        Plugin anvil = Bukkit.getPluginManager().getPlugin("YknAnvil");
+        if (anvil == null || !anvil.isEnabled()) return null;
+        Object item = anvil.getClass().getMethod("createItem", String.class, int.class)
+                .invoke(anvil, id, 1);
+        return item instanceof ItemStack stack ? stack : null;
     }
 
     private ItemStack resolveMythic(String id) throws ReflectiveOperationException {

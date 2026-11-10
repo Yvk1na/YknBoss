@@ -132,23 +132,29 @@ raid-loot:
     end-witch:
       gold: 330
       silver: 450
-  # 各品质对 base（基础素材）/ core（核心素材）/ rare（稀有物品）概率的倍率；银宝箱即下方掉落表的原始概率。
+  # 各品质对 base（基础素材）/ core（核心素材）/ rare（稀有物品）/ forge（锻造道具）概率的倍率。
+  # 银宝箱即下方掉落表的原始概率；旧配置缺少 forge 倍率时按 1.0。
   multipliers:
     copper:
       base: 0.75
       core: 0.5
       rare: 0.5
+      forge: 0.5
     silver:
       base: 1.0
       core: 1.0
       rare: 1.0
+      forge: 1.0
     gold:
       base: 1.25
       core: 1.25
       rare: 1.5
-  # item：mythic:<MythicMobs 物品 ID>、eco:<eco 物品查询串> 或原版物品名。
+      forge: 1.5
+  # item：mythic:<MythicMobs 物品 ID>、eco:<eco 物品查询串>、yknanvil:<luckstone|charm|scroll> 或原版物品名。
+  # yknanvil: 从启用的 YknAnvil 创建同 /yknanvil give 的辅助道具；来源缺失或道具不存在时警告一次并跳过。
   # chance 为银宝箱下的百分比概率；min/max 为数量范围；pity 为连续未掉落该物品多少场后下一场必掉（0 表示无保底）。
-  # 界面只有四个奖励格：命中超过四种时优先保留核心与稀有物品。
+  # 界面只有四个奖励格：命中超过四种时按 core → rare → forge → base 保留，同类优先低概率。
+  # guarantee-one-base 仅从 category: base 中抽取，不会保底锻造道具。
   tables:
     bone-dragon:
       - {item: "mythic:YKI_BONE_DRAGON_FANG", category: base, chance: 50, min: 1, max: 2}
@@ -158,6 +164,9 @@ raid-loot:
       - {item: "mythic:YKI_DEATH_RULER_CROWN", category: base, chance: 25, min: 1, max: 1}
       - {item: "mythic:YKI_WRAITHFIRE_DRAGONHEART", category: core, chance: 10, min: 1, max: 1, pity: 20}
       - {item: "eco:talismans:boss_1", category: rare, chance: 2, min: 1, max: 1}
+      - {item: "yknanvil:luckstone", category: forge, chance: 25, min: 1, max: 1}
+      - {item: "yknanvil:charm", category: forge, chance: 5, min: 1, max: 1}
+      - {item: "yknanvil:scroll", category: forge, chance: 3, min: 1, max: 1}
     endsun-guard:
       - {item: "mythic:YKI_SOLAR_AEGIS_FRAGMENT", category: base, chance: 55, min: 1, max: 2}
       - {item: "mythic:YKI_JUDGEMENT_AMETHYST", category: base, chance: 45, min: 1, max: 2}
@@ -166,6 +175,9 @@ raid-loot:
       - {item: "mythic:YKI_ENDSUN_HEARTFURNACE", category: base, chance: 20, min: 1, max: 1}
       - {item: "mythic:YKI_BLACK_SUN_CINDER", category: core, chance: 12, min: 1, max: 1, pity: 16}
       - {item: "eco:talismans:boss_2", category: rare, chance: 2, min: 1, max: 1}
+      - {item: "yknanvil:luckstone", category: forge, chance: 30, min: 1, max: 1}
+      - {item: "yknanvil:charm", category: forge, chance: 6, min: 1, max: 1}
+      - {item: "yknanvil:scroll", category: forge, chance: 4, min: 1, max: 1}
     end-witch:
       - {item: "mythic:YKI_WITCHMARK_SHARD", category: base, chance: 60, min: 1, max: 3}
       - {item: "mythic:YKI_END_CRYSTAL_HEART", category: base, chance: 35, min: 1, max: 1}
@@ -174,6 +186,9 @@ raid-loot:
       - {item: "mythic:YKI_SEVERED_FATE_THREAD", category: base, chance: 18, min: 1, max: 1}
       - {item: "mythic:YKI_BLACK_SUN_CORE", category: core, chance: 10, min: 1, max: 1, pity: 20}
       - {item: "eco:talismans:boss_3", category: rare, chance: 1.5, min: 1, max: 1}
+      - {item: "yknanvil:luckstone", category: forge, chance: 35, min: 1, max: 1}
+      - {item: "yknanvil:charm", category: forge, chance: 7, min: 1, max: 1}
+      - {item: "yknanvil:scroll", category: forge, chance: 5, min: 1, max: 1}
 
 endsun-guard:
   display-name: "&6&l烬日冥卫·阿努赫"

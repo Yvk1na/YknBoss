@@ -5,7 +5,7 @@ api-version: '1.21.10'
 authors: [ykn]
 description: Minecraft RPG Boss 插件：骨龙与烬日冥卫·阿努赫（Paper 1.21.10+）
 depend: [Multiverse-Core]
-softdepend: [AuraSkills, ItemsAdder, CraftEngine, BetterModel]
+softdepend: [AuraSkills, ItemsAdder, CraftEngine, BetterModel, YknAnvil]
 commands:
   yknboss:
     description: 管理 YknBoss、Boss 副本与特殊物品

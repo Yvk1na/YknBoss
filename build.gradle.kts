@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "cn.yknboss"
-version = "2.0.18"
+version = "2.0.19"
 val pluginVersion = version.toString()
 
 repositories {
@@ -20,6 +20,12 @@ dependencies {
     compileOnly("dev.aurelium:auraskills-api:2.3.12")
     compileOnly(files("libs/bettermodel-3.4.1-paper.jar"))
     compileOnly(files("libs/Multiverse-Core-5.7.3.jar"))
+    testImplementation("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
+    testImplementation("org.yaml:snakeyaml:2.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
+    testImplementation("org.mockito:mockito-core:5.20.0")
+    testRuntimeOnly(files(configurations.compileClasspath))
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.13.4")
 }
 
 val proguard by configurations.creating
@@ -34,6 +40,10 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 tasks.withType<JavaCompile>().configureEach {

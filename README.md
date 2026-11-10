@@ -47,10 +47,13 @@
 
 - Boss 被击败后，场地中央会出现一个 BetterModel 宝箱（模型 `yknboss_chest_copper` / `yknboss_chest_silver` / `yknboss_chest_gold`）；未加载模型时改用原版箱子外观。
 - 品质由通关用时（Boss 出现到被击杀）决定：默认 5:30 内为金宝箱，7:30 内为银宝箱，其余为铜宝箱；各 Boss 的时限在 `raid-loot.time-limits` 单独配置。
-- 银宝箱使用 `raid-loot.tables` 中的原始概率；金、铜宝箱按 `raid-loot.multipliers` 对基础素材、核心素材、稀有物品分别乘以倍率。
+- 银宝箱使用 `raid-loot.tables` 中的原始概率；金、铜宝箱按 `raid-loot.multipliers` 对基础素材、核心素材、稀有物品、锻造道具分别乘以倍率。
 - 每名合格成员（伤害不低于人均伤害的 30%）各自独立掷骰，概率不随队伍人数变化；核心素材带保底，计数写入玩家 PDC。
 - 右键宝箱打开领取界面：四个奖励格、“领取奖励”与“关闭”按钮，其余为淡灰色玻璃。离开副本时未领取的奖励自动发放，离线成员下次上线补发（`pending-loot.yml`）。
-- 掉落物来自 MythicMobs 的 YknRpg 首领素材（`mythic:YKI_*`）与首领护符（`eco:talismans:boss_*`），均为软依赖；物品不存在时该掉落项会被跳过并在控制台警告。
+- 掉落物来自 MythicMobs 的 YknRpg 首领素材（`mythic:YKI_*`）、首领护符（`eco:talismans:boss_*`）及 YknAnvil 1.2.2 的辅助道具（`yknanvil:luckstone` / `yknanvil:charm` / `yknanvil:scroll`），均为软依赖；物品不存在或来源未启用时跳过，按物品警告一次，重载后重新检查。
+- `yknanvil:` 通过反射调用启用插件的 `createItem(String,int)`，以数量 1 创建模板并沿用缓存、逐次克隆发奖；物品与 `/yknanvil give` 相同。未知 ID 或接口异常沿用其他来源的跳过逻辑，不影响其余奖励。
+- 四格超出时依次保留 `core → rare → forge → base`，同类保留原始概率较低的物品；`guarantee-one-base` 仍仅在没有任何奖励时从 base 保底，不抽锻造道具。
+- 默认银宝箱幸运石/保护符/守护卷轴概率：骨龙 **25% / 5% / 3%**，阿努赫 **30% / 6% / 4%**，伊芙蕾雅 **35% / 7% / 5%**；均为数量 1、无单项保底。铜/银/金宝箱的 forge 倍率分别 **0.5 / 1.0 / 1.5**，旧配置缺项按 1.0。已有配置不自动改写，请将默认配置的九个新条目及倍率合并到自定义掉落表。
 
 ## 特殊物品
 
@@ -63,16 +66,17 @@
 ## 构建
 
 ```powershell
-$env:JAVA_HOME = 'C:\java\25'
-.\gradlew.bat clean build
+.\deploy.cmd -BuildOnly
 ```
+
+入口固定 JDK 25 与仓库内 `.gradle-user-home`，依次运行 clean、JUnit 测试、编译、混淆、资源打包及发布产物校验；`-BuildOnly` 不操作服务端。
 
 产物：
 
-- `build/libs/YknBoss-2.0.18-obfuscated.jar`
-- `build/distributions/YknBoss-BetterModel-Pack-2.0.18.zip`
-- `build/distributions/YknBoss-CraftEngine-Pack-2.0.18.zip`
-- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.18.zip`
+- `build/libs/YknBoss-2.0.19-obfuscated.jar`
+- `build/distributions/YknBoss-BetterModel-Pack-2.0.19.zip`
+- `build/distributions/YknBoss-CraftEngine-Pack-2.0.19.zip`
+- `build/distributions/YknBoss-ItemsAdder-Pack-2.0.19.zip`
 
 服务端也需要使用 Java 25 启动。
 
@@ -95,7 +99,7 @@ CraftEngine 和 ItemsAdder 都是软依赖，不需要同时安装；目前仅�
 ### BetterModel（骨龙与烬日冥卫必需）
 
 1. 将用户提供的 `bettermodel-3.4.1-paper.jar` 放入服务端 `plugins/`。
-2. 解压 `YknBoss-BetterModel-Pack-2.0.18.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
+2. 解压 `YknBoss-BetterModel-Pack-2.0.19.zip`，把 `models` 合并到 `plugins/BetterModel/models/`。
 3. 启动服务器，或执行 `/bettermodel reload`。
 4. 执行 `/yknboss spawn bone_dragon`。
 
