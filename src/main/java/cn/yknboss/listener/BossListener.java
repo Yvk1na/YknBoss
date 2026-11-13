@@ -1,6 +1,9 @@
 package cn.yknboss.listener;
 
 import cn.yknboss.YknBossPlugin;
+import cn.yknboss.boss.BoneDragonManager;
+import cn.yknboss.boss.EndWitchManager;
+import cn.yknboss.boss.EndsunGuardManager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -143,11 +146,14 @@ public final class BossListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBoneDragonDamage(EntityDamageEvent event) {
-        if (plugin.boneDragonManager().isBoss(event.getEntity())) {
+        // 全服每次受傷都會進來：Boss 類型標記只讀一次，非 Boss 實體立即返回。
+        String type = bossType(event.getEntity());
+        if (type == null) return;
+        if (BoneDragonManager.TYPE_ID.equals(type)) {
             plugin.boneDragonManager().handleIncomingDamage(event);
-        } else if (plugin.endsunGuardManager().isBoss(event.getEntity())) {
+        } else if (EndsunGuardManager.TYPE_ID.equals(type)) {
             plugin.endsunGuardManager().handleIncomingDamage(event);
-        } else if (plugin.endWitchManager().isBoss(event.getEntity())) {
+        } else if (EndWitchManager.TYPE_ID.equals(type)) {
             plugin.endWitchManager().handleIncomingDamage(event);
         }
     }
@@ -202,8 +208,15 @@ public final class BossListener implements Listener {
     }
 
     private boolean isBoss(org.bukkit.entity.Entity entity) {
-        return plugin.boneDragonManager().isBoss(entity) || plugin.endsunGuardManager().isBoss(entity)
-                || plugin.endWitchManager().isBoss(entity);
+        String type = bossType(entity);
+        return type != null && (BoneDragonManager.TYPE_ID.equals(type)
+                || EndsunGuardManager.TYPE_ID.equals(type) || EndWitchManager.TYPE_ID.equals(type));
+    }
+
+    /** 三個管理器的 isBoss 都讀同一個 boss_type 標記；這裡讀一次，避免每個事件重複讀三次。 */
+    private String bossType(org.bukkit.entity.Entity entity) {
+        return entity.getPersistentDataContainer()
+                .get(plugin.bossTypeKey(), org.bukkit.persistence.PersistentDataType.STRING);
     }
 
     private boolean isProtectedEntity(org.bukkit.entity.Entity entity) {
