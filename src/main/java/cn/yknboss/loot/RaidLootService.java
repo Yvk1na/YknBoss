@@ -104,6 +104,7 @@ public final class RaidLootService implements Listener {
     private final YknBossPlugin plugin;
     private final NamespacedKey chestKey;
     private final File pendingFile;
+    private final EcoCollectionBridge collections;
     private final Map<UUID, ChestSession> sessions = new HashMap<>();
     private final Map<UUID, List<PendingLoot>> pending = new HashMap<>();
     private final Map<String, ItemStack> templates = new HashMap<>();
@@ -124,6 +125,7 @@ public final class RaidLootService implements Listener {
         this.plugin = plugin;
         this.chestKey = new NamespacedKey(plugin, "raid_loot_chest");
         this.pendingFile = new File(plugin.getDataFolder(), "pending-loot.yml");
+        this.collections = new EcoCollectionBridge(plugin);
         reload();
         loadPending();
     }
@@ -211,8 +213,23 @@ public final class RaidLootService implements Listener {
                 session.ineligible.add(playerId);
                 continue;
             }
-            List<ItemStack> rewards = roll(raidKey, table, tier, Bukkit.getPlayer(playerId));
-            if (!rewards.isEmpty()) session.rewards.put(playerId, rewards);
+            Player player = Bukkit.getPlayer(playerId);
+            List<Rolled> rolled = rollEntries(raidKey, table, tier, player);
+            if (!rolled.isEmpty()) {
+                List<ItemStack> rewards = new ArrayList<>(rolled.size());
+                for (Rolled hit : rolled) rewards.add(hit.item());
+                session.rewards.put(playerId, rewards);
+            }
+            if (player != null) {
+                collections.give(player, "yknboss_" + raid.replace('-', '_').toLowerCase(Locale.ROOT), 1.0);
+                for (Rolled hit : rolled) {
+                    String itemKey = hit.entry().item();
+                    if (itemKey.toLowerCase(Locale.ROOT).startsWith("mythic:")) {
+                        String mythicId = itemKey.substring("mythic:".length()).trim().toLowerCase(Locale.ROOT);
+                        collections.give(player, mythicId, hit.item().getAmount());
+                    }
+                }
+            }
         }
 
         World world = focus.getWorld();
@@ -359,6 +376,13 @@ public final class RaidLootService implements Listener {
     }
 
     List<ItemStack> roll(String raidKey, List<Entry> table, Tier tier, Player player) {
+        List<Rolled> hits = rollEntries(raidKey, table, tier, player);
+        List<ItemStack> result = new ArrayList<>(hits.size());
+        for (Rolled rolled : hits) result.add(rolled.item());
+        return result;
+    }
+
+    private List<Rolled> rollEntries(String raidKey, List<Entry> table, Tier tier, Player player) {
         Multipliers multiplier = multipliers.get(tier);
         ThreadLocalRandom random = ThreadLocalRandom.current();
         List<Rolled> hits = new ArrayList<>();
@@ -390,9 +414,7 @@ public final class RaidLootService implements Listener {
                     .thenComparingDouble(rolled -> rolled.entry().chance()));
             hits = new ArrayList<>(hits.subList(0, REWARD_SLOTS.length));
         }
-        List<ItemStack> result = new ArrayList<>(hits.size());
-        for (Rolled rolled : hits) result.add(rolled.item());
-        return result;
+        return hits;
     }
 
     private NamespacedKey pityKey(String raidKey, String itemKey) {
