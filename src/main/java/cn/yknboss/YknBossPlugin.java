@@ -1092,6 +1092,12 @@ public final class YknBossPlugin extends JavaPlugin {
         return raidSidebar;
     }
 
+    public boolean hasOpenBossRaid(java.util.UUID accountId) {
+        return (arenaManager != null && arenaManager.hasProfileActivity(accountId))
+                || (endsunArenaManager != null && endsunArenaManager.hasProfileActivity(accountId))
+                || (endWitchArenaManager != null && endWitchArenaManager.hasProfileActivity(accountId));
+    }
+
     public RaidLootService raidLoot() {
         return raidLoot;
     }

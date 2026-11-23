@@ -16,6 +16,8 @@ repositories {
 }
 
 dependencies {
+    compileOnly(files(providers.gradleProperty("skyblockCoreJar")
+        .orElse("../Skyblock-Core/build/libs/Skyblock-Core-1.1.2.jar")))
     compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
     compileOnly("dev.aurelium:auraskills-api:2.3.12")
     compileOnly(files("libs/bettermodel-3.4.1-paper.jar"))

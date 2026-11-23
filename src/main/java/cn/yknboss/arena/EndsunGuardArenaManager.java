@@ -858,6 +858,13 @@ public final class EndsunGuardArenaManager {
         return instanceForWorld(world) != null;
     }
 
+    public boolean hasProfileActivity(UUID accountId) {
+        return instanceByPlayer.containsKey(accountId) || spectatorByPlayer.containsKey(accountId)
+                || pendingOfflineReturns.containsKey(accountId)
+                || instances.stream().anyMatch(instance -> instance.activeBossId != null
+                        && !instance.resetting && instance.eligibleParticipants.contains(accountId));
+    }
+
     public boolean isPlayerInSession(UUID playerId) {
         return instanceByPlayer.containsKey(playerId);
     }

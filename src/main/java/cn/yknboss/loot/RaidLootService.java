@@ -8,6 +8,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import dev.chengzhi.skyblockcore.profile.ProfileIdentity;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -209,8 +210,9 @@ public final class RaidLootService implements Listener {
         Tier tier = tierFor(raidKey, clearSeconds);
         ChestSession session = new ChestSession(sessionKey, tier);
         for (UUID playerId : eligibleParticipants) {
+            UUID character = character(playerId);
             if (damageOf(damageContributions, playerId) + 0.0001 < threshold) {
-                session.ineligible.add(playerId);
+                session.ineligible.add(character);
                 continue;
             }
             Player player = Bukkit.getPlayer(playerId);
@@ -218,7 +220,7 @@ public final class RaidLootService implements Listener {
             if (!rolled.isEmpty()) {
                 List<ItemStack> rewards = new ArrayList<>(rolled.size());
                 for (Rolled hit : rolled) rewards.add(hit.item());
-                session.rewards.put(playerId, rewards);
+                session.rewards.put(character, rewards);
             }
             if (player != null) {
                 collections.give(player, "yknboss_" + raid.replace('-', '_').toLowerCase(Locale.ROOT), 1.0);
@@ -391,7 +393,7 @@ public final class RaidLootService implements Listener {
             boolean hit = random.nextDouble(100.0) < chance;
             if (entry.pity() > 0 && player != null) {
                 PersistentDataContainer data = player.getPersistentDataContainer();
-                NamespacedKey pityKey = pityKey(raidKey, entry.item());
+                NamespacedKey pityKey = pityKey(raidKey, entry.item(), player);
                 int misses = data.getOrDefault(pityKey, PersistentDataType.INTEGER, 0);
                 if (!hit && misses >= entry.pity()) hit = true;
                 data.set(pityKey, PersistentDataType.INTEGER, hit ? 0 : misses + 1);
@@ -417,9 +419,25 @@ public final class RaidLootService implements Listener {
         return hits;
     }
 
-    private NamespacedKey pityKey(String raidKey, String itemKey) {
+    private boolean profilesAvailable() {
+        return plugin.getServer() != null
+                && plugin.getServer().getPluginManager().isPluginEnabled("Skyblock-Core");
+    }
+
+    private UUID character(UUID accountId) {
+        return profilesAvailable() ? ProfileIdentity.characterId(plugin.getServer(), accountId) : accountId;
+    }
+
+    private Player onlineCharacter(UUID character) {
+        return profilesAvailable() ? ProfileIdentity.onlinePlayer(plugin.getServer(), character) : Bukkit.getPlayer(character);
+    }
+
+    private NamespacedKey pityKey(String raidKey, String itemKey, Player player) {
         String sanitized = (raidKey + "_" + itemKey).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_.-]", "_");
-        return new NamespacedKey(plugin, "loot_pity_" + sanitized);
+        UUID account = player.getUniqueId();
+        UUID character = character(account);
+        String prefix = java.util.Objects.equals(account, character) ? "" : "profile_" + character + "_";
+        return new NamespacedKey(plugin, prefix + "loot_pity_" + sanitized);
     }
 
     private static double damageOf(Map<UUID, Double> contributions, UUID playerId) {
@@ -526,7 +544,7 @@ public final class RaidLootService implements Listener {
     }
 
     void open(Player player, ChestSession session) {
-        UUID playerId = player.getUniqueId();
+        UUID playerId = character(player.getUniqueId());
         if (!session.rewards.containsKey(playerId)) {
             String key = session.claimed.contains(playerId) ? "loot.already-claimed"
                     : session.ineligible.contains(playerId) ? "loot.not-eligible" : "loot.no-reward";
@@ -600,7 +618,7 @@ public final class RaidLootService implements Listener {
     }
 
     void claim(Player player, ChestSession session, LootHolder holder) {
-        UUID playerId = player.getUniqueId();
+        UUID playerId = character(player.getUniqueId());
         List<ItemStack> rewards = session.rewards.get(playerId);
         if (rewards == null) {
             player.closeInventory();
@@ -646,7 +664,7 @@ public final class RaidLootService implements Listener {
         }
         boolean pendingChanged = false;
         for (Map.Entry<UUID, List<ItemStack>> entry : session.rewards.entrySet()) {
-            Player player = Bukkit.getPlayer(entry.getKey());
+            Player player = onlineCharacter(entry.getKey());
             if (player != null && player.isOnline()) {
                 deliver(player, entry.getValue(), session.tier, "loot.auto-granted");
             } else {
@@ -673,11 +691,11 @@ public final class RaidLootService implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        UUID playerId = event.getPlayer().getUniqueId();
+        UUID playerId = character(event.getPlayer().getUniqueId());
         if (!pending.containsKey(playerId)) return;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player == null || !player.isOnline()) return;
+            Player player = onlineCharacter(playerId);
+            if (player != event.getPlayer() || !player.isOnline()) return;
             List<PendingLoot> batches = pending.remove(playerId);
             if (batches == null || batches.isEmpty()) return;
             savePending();
